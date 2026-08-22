@@ -1,0 +1,36 @@
+# Dependency & build
+node_modules/
+dist/
+build/
+.next/
+out/
+bin/
+obj/
+target/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Config & secret
+.env
+.env.local
+.env.*.local
+appsettings.Development.json
+application-local.properties
+local.settings.json
+
+# IDE & OS
+.vs/
+.vscode/
+.idea/
+*.user
+.DS_Store
+Thumbs.db
+
+# Data & log
+*.log
+*.sqlite
+*.db
+uploads/
+coverage/
