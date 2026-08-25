@@ -13,10 +13,11 @@ class AuthRepository:
     def create_user(self, username: str, password_hash: str, ma_vai_tro: int):
         query = text("""
                      INSERT INTO nguoi_dung (username, password, ma_vai_tro)
-                     VALUES (:username, :password, :ma_vai_tro) RETURNING id, username, ma_vai_tro
+                     VALUES (:username, :password, :ma_vai_tro)
                      """)
-        result = self.db.execute(
-            query, {"username": username, "password": password_hash, "ma_vai_tro": ma_vai_tro}
-        ).fetchone()
+
+        result = self.db.execute(query, {"username": username, "password": password_hash, "ma_vai_tro": ma_vai_tro})
+
         self.db.commit()
-        return result
+
+        return {"id": result.lastrowid, "username": username, "ma_vai_tro": ma_vai_tro}
