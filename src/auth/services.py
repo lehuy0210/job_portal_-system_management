@@ -24,7 +24,7 @@ class AuthService:
     def register(self, data: RegisterRequestDTO):
         existing_user = self.repository.get_user_by_username(data.username)
         if existing_user:
-            raise ValueError("USERNAME_EXISTS")
+            raise ValueError("Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác!")
 
         salt = bcrypt.gensalt()
         password_hash = bcrypt.hashpw(data.password.encode("utf-8"), salt).decode("utf-8")
@@ -35,15 +35,15 @@ class AuthService:
             username=data.username, password_hash=password_hash, ma_vai_tro=ma_vai_tro_mac_dinh
         )
 
-        return {"id": new_user.id, "username": new_user.username, "ma_vai_tro": new_user.ma_vai_tro}
+        return new_user
 
     def login(self, data: LoginRequestDTO):
         user = self.repository.get_user_by_username(data.username)
         if not user:
-            raise ValueError("INVALID_CREDENTIALS")
+            raise ValueError("Tên đăng nhập hoặc mật khẩu không chính xác!")
 
         if not bcrypt.checkpw(data.password.encode("utf-8"), user.password.encode("utf-8")):
-            raise ValueError("INVALID_CREDENTIALS")
+            raise ValueError("Tên đăng nhập hoặc mật khẩu không chính xác!")
 
         payload = {
             "user_id": user.id,
