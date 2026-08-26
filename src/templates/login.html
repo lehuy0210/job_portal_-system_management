@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng nhập - JobPortal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <form class="auth-form" id="loginForm">
+        <h2>Đăng nhập</h2>
+
+        <div class="form-group">
+            <label for="username">Tên đăng nhập</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Mật khẩu</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Đăng nhập</button>
+
+        <p class="auth-link">Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
+    </form>
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('access_token', result.data.access_token);
+                localStorage.setItem('username', username);
+                localStorage.setItem('ma_vai_tro', result.data.ma_vai_tro);
+
+                const userId = result.data.id || result.data.user_id;
+                if(userId) localStorage.setItem('user_id', userId);
+
+                showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
+
+                setTimeout(() => {
+                    const role = String(result.data.ma_vai_tro);
+
+                    if (role === "2") {
+
+                        window.location.href = '/jobs';
+                    } else if (role === "3") {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/';
+                    }
+                }, 1000);
+            } else {
+                const errorMsg = (result.error && result.error.message) ? result.error.message : (result.message || 'Đăng nhập thất bại!');
+                showToast(errorMsg, 'danger');
+            }
+        } catch (error) {
+            console.error('Lỗi kết nối:', error);
+            showToast('Không thể kết nối đến máy chủ.', 'danger');
+        }
+    });
+</script>
+{% endblock %}

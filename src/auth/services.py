@@ -53,4 +53,4 @@ class AuthService:
 
         token = jwt.encode(payload, self.jwt_secret, algorithm="HS256")
 
-        return {"access_token": token, "expires_in": 3600, "ma_vai_tro": user.ma_vai_tro}
+        return {"access_token": token, "expires_in": 3600, "ma_vai_tro": user.ma_vai_tro, "id": user.id}

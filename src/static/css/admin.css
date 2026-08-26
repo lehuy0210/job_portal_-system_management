@@ -1,0 +1,102 @@
+.admin-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.admin-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: 1px solid #dee2e6;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+}
+
+.table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.role-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.role-ntd {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
+.role-uv {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+    .admin-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 0 20px;
+    }
+    .admin-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #dee2e6;
+        margin-bottom: 25px;
+    }
+    .company-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .company-form-container .form-group {
+        margin-bottom: 1.25rem;
+        display: flex;
+        flex-direction: column;
+    }
+    .company-form-container .form-group label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+    }
+    .company-form-container .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        outline: none;
+        background-color: #ffffff;
+        color: #1e293b;
+        box-sizing: border-box;
+    }
+    .company-form-container textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
