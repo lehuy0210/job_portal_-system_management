@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Trang chủ - JobPortal{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1>Tìm kiếm công việc mơ ước của bạn</h1>
+        <p>Hàng ngàn cơ hội việc làm từ các công ty hàng đầu đang chờ đón bạn.</p>
+
+        <form class="search-box" action="/search" method="GET">
+            <input type="text" name="q" placeholder="Nhập chức danh, từ khóa hoặc công ty..." required>
+            <button type="submit" class="btn btn-primary btn-large">Tìm việc ngay</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
