@@ -2,16 +2,192 @@
 
 {% block title %}Trang chủ - JobPortal{% endblock %}
 
+{% block extra_css %}
+{% endblock %}
+
 {% block content %}
 <div class="hero-section">
     <div class="hero-content">
         <h1>Tìm kiếm công việc mơ ước của bạn</h1>
         <p>Hàng ngàn cơ hội việc làm từ các công ty hàng đầu đang chờ đón bạn.</p>
 
-        <form class="search-box" action="/search" method="GET">
-            <input type="text" name="q" placeholder="Nhập chức danh, từ khóa hoặc công ty..." required>
-            <button type="submit" class="btn btn-primary btn-large">Tìm việc ngay</button>
+        <form class="filter-container" id="filterForm">
+            <div class="filter-group col-span-2">
+                <label>Từ khóa (Tiêu đề / Mô tả)</label>
+                <input type="text" id="keyword" placeholder="VD: Backend, .NET, React...">
+            </div>
+            <div class="filter-group">
+                <label>Địa điểm làm việc</label>
+                <input type="text" id="dia_chi" placeholder="VD: Hồ Chí Minh, Quận 1...">
+            </div>
+
+            <div class="filter-group">
+                <label>Lương tối thiểu (VNĐ)</label>
+                <input type="number" id="min_salary" placeholder="VD: 10000000" min="0">
+            </div>
+            <div class="filter-group">
+                <label>Lương tối đa (VNĐ)</label>
+                <input type="number" id="max_salary" placeholder="VD: 30000000" min="0">
+            </div>
+            <div class="filter-group">
+                <label>Kỹ năng yêu cầu</label>
+                <select id="skill_id">
+                    <option value="">-- Tất cả kỹ năng --</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Kinh nghiệm tối thiểu (Năm)</label>
+                <input type="number" id="min_experience" placeholder="VD: 1" min="0">
+            </div>
+            <div class="filter-group">
+                <label>Kinh nghiệm tối đa (Năm)</label>
+                <input type="number" id="max_experience" placeholder="VD: 5" min="0">
+            </div>
+
+            <div class="filter-actions col-span-3">
+                <button type="button" class="btn btn-outline" id="resetBtn" style="padding: 10px 20px;">Đặt lại</button>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 25px;">Tìm kiếm & Lọc</button>
+            </div>
         </form>
     </div>
 </div>
+
+<div class="job-list-section">
+    <h2 class="section-title">Danh sách việc làm</h2>
+    <div class="job-grid" id="public-job-list">
+        <p style="color: #64748b; text-align: center; width: 100%;">Đang tải danh sách việc làm...</p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const role = localStorage.getItem('ma_vai_tro');
+
+        if (role === "2") {
+            window.location.href = "/jobs";
+            return;
+        }
+        else if (role === "3") {
+            window.location.href = "/admin";
+            return;
+        }
+
+        loadSkillsDropdown();
+        loadPublicJobs();
+    });
+
+    async function loadSkillsDropdown() {
+        try {
+            const res = await fetch('/api/v1/jobs/skills');
+            if (res.ok) {
+                const result = await res.json();
+                const skillSelect = document.getElementById('skill_id');
+
+                (result.data || []).forEach(skill => {
+                    const option = document.createElement('option');
+                    option.value = skill.ma_ky_nang;
+                    option.textContent = skill.ten_ky_nang;
+                    skillSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error("Không thể tải danh sách kỹ năng");
+        }
+    }
+
+    async function loadPublicJobs() {
+        const keyword = document.getElementById('keyword').value.trim();
+        const diaChi = document.getElementById('dia_chi').value.trim();
+        const minSalary = document.getElementById('min_salary').value;
+        const maxSalary = document.getElementById('max_salary').value;
+        const minExp = document.getElementById('min_experience').value;
+        const maxExp = document.getElementById('max_experience').value;
+        const skillId = document.getElementById('skill_id').value;
+
+        const params = new URLSearchParams();
+        if (keyword) params.append('keyword', keyword);
+        if (diaChi) params.append('dia_chi', diaChi);
+        if (minSalary) params.append('min_salary', minSalary);
+        if (maxSalary) params.append('max_salary', maxSalary);
+        if (minExp) params.append('min_experience', minExp);
+        if (maxExp) params.append('max_experience', maxExp);
+        if (skillId) params.append('skill_ids', skillId);
+
+        // Mặc định luôn lọc tin đang mở (ma_trang_thai = 2) cho ứng viên xem
+        params.append('ma_trang_thai', '2');
+
+        try {
+            const res = await fetch(`/api/v1/jobs/search?${params.toString()}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                renderJobs(result.data || []);
+            } else {
+                document.getElementById('public-job-list').innerHTML = `<p style="color: red; width: 100%; text-align: center;">Không thể tải dữ liệu việc làm.</p>`;
+            }
+        } catch (error) {
+            document.getElementById('public-job-list').innerHTML = `<p style="color: red; width: 100%; text-align: center;">Lỗi kết nối máy chủ.</p>`;
+        }
+    }
+
+    function renderJobs(jobs) {
+        const container = document.getElementById('public-job-list');
+        container.innerHTML = '';
+
+        if (jobs.length === 0) {
+            container.innerHTML = `<p style="color: #64748b; text-align: center; width: 100%; grid-column: 1 / -1;">Không tìm thấy công việc nào phù hợp với điều kiện lọc.</p>`;
+            return;
+        }
+
+        jobs.forEach(job => {
+            const tieuDe = job.tieu_de || "Chưa cập nhật tiêu đề";
+            const congTy = job.ten_cong_ty || job.ten_nha_tuyen_dung || "Đang cập nhật công ty";
+            const luong = job.luong ? job.luong.toLocaleString('vi-VN') + " đ" : "Thỏa thuận";
+            const diaChi = job.dia_chi || "Chưa cập nhật địa chỉ";
+
+            let hanNop = "Không thời hạn";
+            if (job.han_nop) {
+                const dateObj = new Date(job.han_nop);
+                hanNop = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+            }
+
+            let skillsHtml = '';
+            if (job.ky_nangs && job.ky_nangs.length > 0) {
+                skillsHtml = job.ky_nangs.map(k => `<span class="skill-tag">${k.ten_ky_nang}</span>`).join('');
+            } else {
+                skillsHtml = `<span style="font-size: 0.8rem; color: #94a3b8;">Chưa yêu cầu kỹ năng cụ thể</span>`;
+            }
+
+            container.innerHTML += `
+                <div class="job-card">
+                    <a href="#" class="job-title">${tieuDe}</a>
+                    <div class="job-company">🏢 ${congTy}</div>
+                    <div class="job-details">
+                        <span class="salary-badge">💰 Mức lương: ${luong}</span>
+                        <span>📍 Địa điểm: ${diaChi}</span>
+                        <span>⏱ Hạn nộp: ${hanNop}</span>
+                    </div>
+                    <div class="job-skills">
+                        ${skillsHtml}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadPublicJobs();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        document.getElementById('filterForm').reset();
+        document.getElementById('skill_id').value = "";
+        loadPublicJobs();
+    });
+</script>
 {% endblock %}

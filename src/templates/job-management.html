@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý tin tuyển dụng - JobPortal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/job-management.css') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .status-select {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid #cbd5e1;
+        outline: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .status-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    .status-2 { background-color: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+    .status-9 { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .status-10 { background-color: #fee2e2; color: #991b1b; border-color: #fecaca; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="job-container">
+    <div class="job-header">
+        <h2>Quản lý tin tuyển dụng</h2>
+        <button class="btn btn-primary" onclick="showForm()">+ Đăng tin mới</button>
+    </div>
+
+    <div id="job-form-container" class="job-form-container" style="display: none;">
+        <h3 style="margin-top: 0; margin-bottom: 20px;">Tạo tin tuyển dụng mới</h3>
+        <form id="jobForm">
+            <div class="form-group">
+                <label>Tiêu đề công việc <span style="color:red">*</span></label>
+                <input type="text" id="tieu_de" class="form-control" placeholder="VD: Lập trình viên Backend (.NET)" required>
+            </div>
+
+            <div class="job-form-row">
+                <div class="form-group">
+                    <label>Hạn nộp hồ sơ <span style="color:red">*</span></label>
+                    <input type="text" id="han_nop" class="form-control" placeholder="dd/mm/yyyy" required>
+                </div>
+                <div class="form-group">
+                    <label>Mức lương (VNĐ)</label>
+                    <input type="number" id="luong" class="form-control" placeholder="VD: 15000000" min="0">
+                </div>
+            </div>
+
+            <div class="job-form-row">
+                <div class="form-group">
+                    <label>Số năm kinh nghiệm yêu cầu</label>
+                    <input type="number" id="so_nam_kinh_nghiem" class="form-control" placeholder="VD: 2" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Các kỹ năng (Nhập tên kỹ năng, cách nhau bởi dấu phẩy)</label>
+                    <input type="text" id="ky_nangs" class="form-control" placeholder="VD: Python, C#, Angular">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Địa chỉ làm việc</label>
+                <input type="text" id="dia_chi" class="form-control" placeholder="VD: Quận 1, TP.HCM">
+            </div>
+
+            <div class="form-group">
+                <label>Mô tả chi tiết công việc <span style="color:red">*</span></label>
+                <textarea id="mo_ta" class="form-control" rows="4" required></textarea>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Đăng tin</button>
+                <button type="button" class="btn btn-outline" onclick="hideForm()">Hủy</button>
+            </div>
+        </form>
+    </div>
+
+    <table class="job-table">
+        <thead>
+            <tr>
+                <th>Mã tin</th>
+                <th>Tiêu đề</th>
+                <th>Hạn nộp</th>
+                <th>Mức lương</th>
+                <th>Trạng thái</th>
+            </tr>
+        </thead>
+        <tbody id="job-list">
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    const role = localStorage.getItem('ma_vai_tro');
+    const token = localStorage.getItem('access_token');
+    const userId = localStorage.getItem('user_id');
+
+    if (!token || role !== "2") {
+        showToast("Từ chối truy cập! Chỉ Nhà tuyển dụng mới có quyền vào trang này.", "danger");
+        setTimeout(() => { window.location.href = "/"; }, 1500);
+    }
+
+    function getAuthHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if (token && role === "2") {
+            loadJobs();
+        }
+
+        flatpickr("#han_nop", {
+            altInput: true,
+            altFormat: "d/m/Y",
+            dateFormat: "Y-m-d",
+            minDate: "today"
+        });
+    });
+
+    function showForm() {
+        document.getElementById('job-form-container').style.display = 'block';
+        document.getElementById('jobForm').reset();
+    }
+
+    function hideForm() {
+        document.getElementById('job-form-container').style.display = 'none';
+    }
+
+    async function loadJobs() {
+        try {
+            const res = await fetch(`/api/v1/jobs/search`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (res.status === 401) {
+                showToast("Phiên đăng nhập hết hạn.", "danger");
+                setTimeout(() => { window.location.href = "/login"; }, 1500);
+                return;
+            }
+
+            const result = await res.json();
+            const jobs = result.data || [];
+
+            const tbody = document.getElementById('job-list');
+            tbody.innerHTML = '';
+
+            if (jobs.length > 0) {
+                jobs.forEach(job => {
+                    const tieuDe = job.tieu_de || "Không có tiêu đề";
+                    const luong = job.luong ? job.luong.toLocaleString('vi-VN') + " đ" : "Thỏa thuận";
+
+                    let hanNop = "Không thời hạn";
+                    if (job.han_nop) {
+                        const dateObj = new Date(job.han_nop);
+                        const d = String(dateObj.getDate()).padStart(2, '0');
+                        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                        const y = dateObj.getFullYear();
+                        hanNop = `${d}/${m}/${y}`;
+                    }
+
+                    const currentStatus = job.ma_trang_thai || 2;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>#${job.tin_id}</strong></td>
+                            <td>${tieuDe}</td>
+                            <td>${hanNop}</td>
+                            <td>${luong}</td>
+                            <td>
+                                <select class="status-select status-${currentStatus}" onchange="updateJobStatus(${job.tin_id}, this)">
+                                    <option value="2" ${currentStatus === 2 ? 'selected' : ''}>Đã mở</option>
+                                    <option value="9" ${currentStatus === 9 ? 'selected' : ''}>Tạm dừng</option>
+                                    <option value="10" ${currentStatus === 10 ? 'selected' : ''}>Đã đóng</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;">Bạn chưa có tin tuyển dụng nào.</td></tr>`;
+            }
+        } catch (error) {
+            showToast("Lỗi khi tải danh sách tin tuyển dụng.", "danger");
+        }
+    }
+
+    async function updateJobStatus(tinId, selectElement) {
+        const newStatus = parseInt(selectElement.value);
+
+        try {
+            const res = await fetch(`/api/v1/jobs/${tinId}/status`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ma_trang_thai: newStatus })
+            });
+
+            if (res.ok) {
+                showToast("Cập nhật trạng thái thành công!", "success");
+                selectElement.className = `status-select status-${newStatus}`;
+            } else {
+                const err = await res.json();
+                showToast(err.message || "Lỗi cập nhật trạng thái", "danger");
+                loadJobs();
+            }
+        } catch (error) {
+            showToast("Lỗi kết nối đến máy chủ", "danger");
+            loadJobs();
+        }
+    }
+
+    document.getElementById('jobForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const kyNangStr = document.getElementById('ky_nangs').value;
+        const tenKyNangArray = kyNangStr
+            ? kyNangStr.split(',').map(item => item.trim()).filter(item => item !== "")
+            : [];
+
+        const hanNopValue = document.getElementById('han_nop').value;
+
+        const payload = {
+            tieu_de: document.getElementById('tieu_de').value,
+            mo_ta: document.getElementById('mo_ta').value,
+            han_nop: hanNopValue,
+            luong: document.getElementById('luong').value ? parseInt(document.getElementById('luong').value) : null,
+            dia_chi: document.getElementById('dia_chi').value || null,
+            so_nam_kinh_nghiem: document.getElementById('so_nam_kinh_nghiem').value ? parseInt(document.getElementById('so_nam_kinh_nghiem').value) : null,
+            ma_nha_tuyen_dung: parseInt(userId) || 1,
+            ma_trang_thai: 2, // Mặc định tin mới đăng là Đã mở
+            ten_ky_nangs: tenKyNangArray
+        };
+
+        try {
+            const res = await fetch(`/api/v1/jobs/`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showToast("Đăng tin tuyển dụng thành công!", "success");
+                hideForm();
+                loadJobs();
+            } else {
+                const errorData = await res.json();
+                const errorMsg = errorData.message || "Lỗi khi đăng tin. Vui lòng kiểm tra lại!";
+                showToast(errorMsg, "danger");
+            }
+        } catch (error) {
+            showToast("Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.", "danger");
+        }
+    });
+</script>
+{% endblock %}

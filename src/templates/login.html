@@ -48,17 +48,28 @@
             if (response.ok) {
                 localStorage.setItem('access_token', result.data.access_token);
                 localStorage.setItem('username', username);
-
                 localStorage.setItem('ma_vai_tro', result.data.ma_vai_tro);
-                localStorage.setItem('user_id', result.data.id);
+
+                const userId = result.data.id || result.data.user_id;
+                if(userId) localStorage.setItem('user_id', userId);
 
                 showToast('Đăng nhập thành công! Đang chuyển hướng...', 'success');
 
                 setTimeout(() => {
-                    window.location.href = '/';
+                    const role = String(result.data.ma_vai_tro);
+
+                    if (role === "2") {
+
+                        window.location.href = '/jobs';
+                    } else if (role === "3") {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/';
+                    }
                 }, 1000);
             } else {
-                showToast(result.error.message || 'Đăng nhập thất bại!', 'danger');
+                const errorMsg = (result.error && result.error.message) ? result.error.message : (result.message || 'Đăng nhập thất bại!');
+                showToast(errorMsg, 'danger');
             }
         } catch (error) {
             console.error('Lỗi kết nối:', error);

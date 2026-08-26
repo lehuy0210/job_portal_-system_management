@@ -70,6 +70,30 @@
                         </div>
                     `;
                 }
+                else if (maVaiTro === "2") {
+                    greetingContent = `
+                        <div class="user-dropdown">
+                            <div class="user-dropdown-toggle">
+                                Nhà tuyển dụng: <strong>${username} ▼</strong>
+                            </div>
+                            <ul class="user-dropdown-menu">
+                                <li><a href="/jobs">Quản lý tin tuyển dụng</a></li>
+                            </ul>
+                        </div>
+                    `;
+                }
+                else if (maVaiTro === "3") {
+                    greetingContent = `
+                        <div class="user-dropdown">
+                            <div class="user-dropdown-toggle">
+                                Admin: <strong>${username} ▼</strong>
+                            </div>
+                            <ul class="user-dropdown-menu">
+                                <li><a href="#">Quản trị hệ thống</a></li>
+                            </ul>
+                        </div>
+                    `;
+                }
 
                 navLinks.innerHTML = `
                     <div class="nav-greeting" style="margin-right: 15px;">${greetingContent}</div>
@@ -77,11 +101,7 @@
                 `;
 
                 document.getElementById('logout-btn').addEventListener('click', function() {
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('username');
-                    localStorage.removeItem('ma_vai_tro');
-                    localStorage.removeItem('user_id');
-
+                    localStorage.clear();
                     window.location.href = '/';
                 });
             } else {
