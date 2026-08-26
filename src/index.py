@@ -8,6 +8,7 @@ from src.ung_vien.controllers import ung_vien_bp
 
 from src.common.exceptions import register_error_handlers
 from src.cv_management.controllers import cv_bp
+from src.job_management.controllers import job_bp
 
 load_dotenv()
 app = Flask(__name__)
@@ -45,6 +46,7 @@ def profile_page():
 @app.route("/cv/preview")
 def cv_preview_page():
     return render_template("cv_preview.html")
+app.register_blueprint(job_bp)
 
 if __name__ == "__main__":
     from livereload import Server
