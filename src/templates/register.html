@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Đăng ký - JobPortal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <form class="auth-form" id="registerForm">
+        <h2>Đăng ký tài khoản</h2>
+
+        <div class="form-group">
+            <label for="reg-username">Tên đăng nhập</label>
+            <input type="text" id="reg-username" name="username" required minlength="4">
+        </div>
+
+        <div class="form-group">
+            <label for="reg-password">Mật khẩu</label>
+            <input type="password" id="reg-password" name="password" required minlength="6">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Đăng ký</button>
+
+        <p class="auth-link">Đã có tài khoản? <a href="/login">Đăng nhập tại đây</a></p>
+
+    </form>
+</div>
+
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('reg-username').value;
+        const password = document.getElementById('reg-password').value;
+
+        try {
+            // Bước 1: Gửi yêu cầu Đăng ký tài khoản
+            const resReg = await fetch('/api/v1/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const resultReg = await resReg.json();
+
+            if (!resReg.ok) {
+                showToast(resultReg.error?.message || 'Đăng ký thất bại!', 'danger');
+                return;
+            }
+
+            const resLogin = await fetch('/api/v1/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const resultLogin = await resLogin.json();
+
+            if (resLogin.ok) {
+                localStorage.setItem('access_token', resultLogin.data.access_token);
+                localStorage.setItem('username', username);
+                localStorage.setItem('ma_vai_tro', resultLogin.data.ma_vai_tro);
+
+                showToast('Đăng ký thành công! Đang chuyển đến trang điền thông tin...', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '/thong-tin-ca-nhan';
+                }, 1200);
+            } else {
+                window.location.href = '/login';
+            }
+
+        } catch (error) {
+            console.error('Lỗi kết nối:', error);
+            showToast('Không thể kết nối đến máy chủ.', 'danger');
+        }
+    });
+</script>
+{% endblock %}

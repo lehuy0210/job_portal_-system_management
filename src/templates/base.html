@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cổng thông tin việc làm{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alert.css') }}">
+    <script src="http://localhost:35729/livereload.js?snipver=1"></script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-logo">
+            <a href="/">JobPortal</a>
+        </div>
+
+        <div class="nav-links" id="navbar-links">
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="toast-container"></div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast-alert toast-${type}`;
+
+            toast.innerHTML = `
+                <span style="flex-grow: 1;">${message}</span>
+                <button type="button" class="toast-close" onclick="this.parentElement.classList.remove('show'); setTimeout(() => this.parentElement.remove(), 400);">&times;</button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                if(toast.parentElement) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 400);
+                }
+            }, 4000);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const token = localStorage.getItem('access_token');
+            const username = localStorage.getItem('username');
+            const maVaiTro = localStorage.getItem('ma_vai_tro');
+            const navLinks = document.getElementById('navbar-links');
+
+            if (token && username) {
+                let greetingContent = `Xin chào, <strong>${username}</strong>`;
+
+                if (maVaiTro === "1") {
+                    greetingContent = `
+                        <div class="user-dropdown">
+                            <div class="user-dropdown-toggle">
+                                Xin chào, <strong>${username} ▼</strong>
+                            </div>
+                            <ul class="user-dropdown-menu">
+                                <li><a href="/thong-tin-ca-nhan">Hồ sơ cá nhân</a></li>
+                                <li><a href="/cv">Quản lý CV</a></li>
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                navLinks.innerHTML = `
+                    <div class="nav-greeting" style="margin-right: 15px;">${greetingContent}</div>
+                    <button id="logout-btn" class="btn btn-outline">Đăng xuất</button>
+                `;
+
+                document.getElementById('logout-btn').addEventListener('click', function() {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('username');
+                    localStorage.removeItem('ma_vai_tro');
+                    localStorage.removeItem('user_id');
+
+                    window.location.href = '/';
+                });
+            } else {
+                navLinks.innerHTML = `
+                    <a href="/login" style="margin-right: 15px; text-decoration: none; font-weight: 500; color: #555;">Đăng nhập</a>
+                    <a href="/register" class="btn btn-primary">Đăng ký</a>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

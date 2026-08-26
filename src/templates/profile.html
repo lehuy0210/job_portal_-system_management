@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Hồ sơ cá nhân - JobPortal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h2>Hồ sơ thông tin cá nhân</h2>
+        <p style="color: #6c757d; margin-top: 5px; margin-bottom: 0;">Cập nhật thông tin để nhà tuyển dụng có thể liên hệ với bạn.</p>
+    </div>
+
+    <form id="profileForm">
+        <div class="profile-form-row">
+            <div class="form-group">
+                <label>Họ và tên</label>
+                <input type="text" id="ho_ten" class="form-control" required placeholder="Nguyễn Văn A">
+            </div>
+            <div class="form-group">
+                <label>Email liên hệ</label>
+                <input type="email" id="email" class="form-control" required placeholder="example@domain.com">
+            </div>
+        </div>
+
+        <div class="profile-form-row">
+            <div class="form-group">
+                <label>Số điện thoại</label>
+                <input type="text" id="so_dien_thoai" class="form-control" required placeholder="0912345678">
+            </div>
+            <div class="form-group">
+                <label>Giới tính</label>
+                <select id="gioi_tinh" class="form-control" required>
+                    <option value="">-- Chọn giới tính --</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="profile-form-row">
+            <div class="form-group">
+                <label>Ngày sinh</label>
+                <input type="text" id="ngay_sinh" class="form-control" required placeholder="DD/MM/YYYY">
+            </div>
+            <div class="form-group">
+                <label>Địa chỉ</label>
+                <input type="text" id="dia_chi" class="form-control" required placeholder="Quận 1, TP. Hồ Chí Minh">
+            </div>
+        </div>
+
+        <div style="margin-top: 25px; text-align: right;">
+            <button type="submit" class="btn btn-primary" style="padding: 10px 25px;">Lưu thông tin</button>
+        </div>
+    </form>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
+<script>
+    const role = localStorage.getItem('ma_vai_tro');
+    const token = localStorage.getItem('access_token');
+
+    if (!token || role !== "1") {
+        alert("Chỉ ứng viên đã đăng nhập mới có quyền truy cập trang này!");
+        window.location.href = "/";
+    }
+
+    function getAuthHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
+    let datePicker;
+    document.addEventListener("DOMContentLoaded", async function() {
+        datePicker = flatpickr("#ngay_sinh", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            locale: "vn",
+            allowInput: true
+        });
+
+        try {
+            const res = await fetch('/api/v1/ung-vien/profile', {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (res.status === 401) {
+                showToast("Phiên đăng nhập hết hạn", "danger");
+                localStorage.clear();
+                window.location.href = "/login";
+                return;
+            }
+
+            const result = await res.json();
+            if (result.data) {
+                const p = result.data;
+                document.getElementById('ho_ten').value = p.ho_ten || '';
+                document.getElementById('email').value = p.email || '';
+                document.getElementById('so_dien_thoai').value = p.so_dien_thoai || '';
+                document.getElementById('gioi_tinh').value = p.gioi_tinh || '';
+
+                if (p.ngay_sinh) {
+                    datePicker.setDate(p.ngay_sinh);
+                }
+
+                document.getElementById('dia_chi').value = p.dia_chi || '';
+            }
+        } catch (error) {
+            showToast("Không thể tải thông tin cá nhân", "danger");
+        }
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const fpInstance = document.querySelector('#ngay_sinh')._flatpickr;
+        let formattedNgaySinh = "";
+
+        if (fpInstance && fpInstance.selectedDates.length > 0) {
+            const selectedDate = fpInstance.selectedDates[0];
+            formattedNgaySinh = fpInstance.formatDate(selectedDate, "Y-m-d"); // Chuẩn YYYY-MM-DD gửi về DB
+        } else {
+            formattedNgaySinh = document.getElementById('ngay_sinh').value;
+        }
+
+        const payload = {
+            ho_ten: document.getElementById('ho_ten').value,
+            email: document.getElementById('email').value,
+            so_dien_thoai: document.getElementById('so_dien_thoai').value,
+            gioi_tinh: document.getElementById('gioi_tinh').value,
+            ngay_sinh: formattedNgaySinh,
+            dia_chi: document.getElementById('dia_chi').value
+        };
+
+        try {
+            const res = await fetch('/api/v1/ung-vien/profile', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                showToast("Cập nhật thông tin cá nhân thành công!", "success");
+                setTimeout(() => {
+                    window.location.href = "/cv";
+                }, 1000);
+            } else {
+                const err = await res.json();
+                showToast(err.error?.message || "Có lỗi xảy ra", "danger");
+            }
+        } catch (error) {
+            showToast("Lỗi kết nối máy chủ", "danger");
+        }
+    });
+</script>
+{% endblock %}
