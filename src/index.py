@@ -5,12 +5,14 @@ from flask import Flask
 
 from src.auth.controllers import auth_bp
 from src.cv_management.controllers import cv_bp
+from src.job_management.controllers import job_bp
 
 load_dotenv()
 app = Flask(__name__)
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(cv_bp)
+app.register_blueprint(job_bp)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
