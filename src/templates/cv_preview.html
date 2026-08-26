@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xem trước CV - JobPortal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alert.css') }}">
+    <style>
+        body {
+            background-color: #525659;
+            padding: 20px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .preview-actions {
+            max-width: 210mm;
+            margin: 0 auto 20px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Khung chuẩn giấy A4 */
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            padding: 20mm;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: 1fr 2fr; /* Chia 2 cột: Trái 1 phần, Phải 2 phần */
+            gap: 25px;
+            color: #1e293b;
+        }
+
+        .cv-sidebar {
+            border-right: 1px solid #e2e8f0;
+            padding-right: 15px;
+            word-break: break-word;
+        }
+
+        .cv-sidebar h1 {
+            font-size: 1.5rem;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .cv-sidebar h2, .cv-main h2 {
+            font-size: 1rem;
+            color: #2563eb;
+            text-transform: uppercase;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+            margin-top: 25px;
+            letter-spacing: 0.5px;
+        }
+
+        .cv-main {
+            padding-left: 5px;
+        }
+
+        .cv-section {
+            margin-bottom: 20px;
+        }
+
+        .cv-section p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            white-space: pre-line; /* Giữ nguyên xuống dòng khi người dùng nhập textarea */
+            color: #334155;
+        }
+
+        /* Khi bấm in/tải PDF */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+            .preview-actions {
+                display: none !important;
+            }
+            .a4-page {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                min-height: 100vh;
+                padding: 15mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Thanh công cụ -->
+    <div class="preview-actions">
+        <a href="/cv" class="btn btn-outline" style="background: white;">⬅ Quay lại quản lý CV</a>
+        <button onclick="window.print()" class="btn btn-primary">🖨️ Tải xuống / In PDF</button>
+    </div>
+
+    <div class="a4-page">
+        <div class="cv-sidebar">
+            <h1 id="cv-hoten">Đang tải...</h1>
+            <p id="cv-email" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;"></p>
+            <p id="cv-sdt" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;"></p>
+            <p id="cv-diachi" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;"></p>
+
+            <h2>Nguồn CV</h2>
+            <p id="cv-source" style="font-size: 0.9rem; color: #475569;">-</p>
+        </div>
+
+        <div class="cv-main">
+            <div class="cv-section">
+                <h2>Tóm tắt bản thân</h2>
+                <p id="cv-tom-tat">Đang cập nhật...</p>
+            </div>
+
+            <div class="cv-section">
+                <h2>Học vấn</h2>
+                <p id="cv-hoc-van">Đang cập nhật...</p>
+            </div>
+
+            <div class="cv-section">
+                <h2>Kinh nghiệm làm việc</h2>
+                <p id="cv-kinh-nghiem">Đang cập nhật...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function() {
+            const token = localStorage.getItem('access_token');
+            const username = localStorage.getItem('username');
+
+            if(username) {
+                document.getElementById('cv-hoten').innerText = username;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const cvId = urlParams.get('id');
+
+            if (!cvId || !token) {
+                alert("Không tìm thấy thông tin CV!");
+                window.location.href = "/cv";
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/v1/cv/ung-vien`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (res.ok) {
+                    const result = await res.json();
+                    const listCV = result.data || [];
+                    const currentCV = listCV.find(c => c.ma_cv == cvId);
+
+                    if (currentCV) {
+                        document.getElementById('cv-tom-tat').innerText = currentCV.tom_tat || '';
+                        document.getElementById('cv-hoc-van').innerText = currentCV.hoc_van || '';
+                        document.getElementById('cv-kinh-nghiem').innerText = currentCV.kinh_nghiem_lam_viec || '';
+                        document.getElementById('cv-source').innerText = currentCV.source || 'Không có';
+
+                        const linkEl = document.getElementById('cv-link');
+                        if(currentCV.duong_dan) {
+                            linkEl.href = currentCV.duong_dan;
+                        } else {
+                            linkEl.style.display = 'none';
+                        }
+                    } else {
+                        alert("Không tìm thấy CV này trong hệ thống!");
+                        window.location.href = "/cv";
+                    }
+                } else {
+                    alert("Lỗi tải thông tin CV");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi kết nối máy chủ");
+            }
+        });
+    </script>
+</body>
+</html>

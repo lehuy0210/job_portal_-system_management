@@ -1,0 +1,132 @@
+.cv-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.cv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.cv-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-main, #1e293b);
+}
+
+.cv-form-container {
+    display: none;
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Ép cấu trúc form theo cột dọc */
+.form-group {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-main, #1e293b);
+    margin-bottom: 0.5rem;
+}
+
+/* 🛑 QUAN TRỌNG: Định nghĩa .form-control để các ô input/textarea giãn full 100% và bo viền đẹp */
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    outline: none;
+    background-color: #ffffff;
+    color: var(--text-main, #1e293b);
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Bố cục 2 cột cho phần đường dẫn và nguồn */
+.cv-form-row {
+    display: flex;
+    gap: 20px;
+}
+
+.cv-form-row .form-group {
+    flex: 1;
+}
+
+.cv-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border: 1px solid #dee2e6;
+}
+
+.cv-table th {
+    background-color: #f1f3f5;
+    padding: 15px;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.cv-table td {
+    padding: 15px;
+    border-bottom: 1px solid #f1f3f5;
+    color: #333;
+    vertical-align: middle;
+}
+
+.cv-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.cv-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.cv-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    margin-left: 5px;
+}
+
+.btn-danger-outline {
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-danger-outline:hover {
+    background: #dc3545;
+    color: #fff;
+}
