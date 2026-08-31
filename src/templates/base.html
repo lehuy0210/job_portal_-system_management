@@ -55,58 +55,43 @@
             const navLinks = document.getElementById('navbar-links');
 
             if (token && username) {
-                let greetingContent = `Xin chào, <strong>${username}</strong>`;
+                let menuItems = '';
 
                 if (maVaiTro === "1") {
-                    greetingContent = `
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-toggle">
-                                Xin chào, <strong>${username} ▼</strong>
-                            </div>
-                            <ul class="user-dropdown-menu">
-                                <li><a href="/thong-tin-ca-nhan">Hồ sơ cá nhân</a></li>
-                                <li><a href="/cv">Quản lý CV</a></li>
-                            </ul>
-                        </div>
+                    menuItems = `
+                        <li><a href="/thong-tin-ca-nhan">Hồ sơ cá nhân</a></li>
+                        <li><a href="/cv">Quản lý CV</a></li>
                     `;
-                }
-                else if (maVaiTro === "2") {
-                    greetingContent = `
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-toggle">
-                                Nhà tuyển dụng: <strong>${username} ▼</strong>
-                            </div>
-                            <ul class="user-dropdown-menu">
-                                <li><a href="/jobs">Quản lý tin tuyển dụng</a></li>
-                            </ul>
-                        </div>
+                } else if (maVaiTro === "2") {
+                    menuItems = `
+                        <li><a href="/jobs">Quản lý tin tuyển dụng</a></li>
                     `;
-                }
-                else if (maVaiTro === "3") {
-                    greetingContent = `
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-toggle">
-                                Admin: <strong>${username} ▼</strong>
-                            </div>
-                            <ul class="user-dropdown-menu">
-                                <li><a href="#">Quản trị hệ thống</a></li>
-                            </ul>
-                        </div>
+                } else if (maVaiTro === "3") {
+                    menuItems = `
+                        <li><a href="/admin">Quản trị hệ thống</a></li>
                     `;
                 }
 
                 navLinks.innerHTML = `
-                    <div class="nav-greeting" style="margin-right: 15px;">${greetingContent}</div>
-                    <button id="logout-btn" class="btn btn-outline">Đăng xuất</button>
+                    <div class="user-dropdown">
+                        <div class="user-dropdown-toggle">
+                            Chào, <strong>${username}</strong> <span>▼</span>
+                        </div>
+                        <ul class="user-dropdown-menu">
+                            ${menuItems}
+                            <li><a href="#" id="logout-btn" style="color: #dc2626 !important; border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">Đăng xuất</a></li>
+                        </ul>
+                    </div>
                 `;
 
-                document.getElementById('logout-btn').addEventListener('click', function() {
+                document.getElementById('logout-btn').addEventListener('click', function(e) {
+                    e.preventDefault();
                     localStorage.clear();
-                    window.location.href = '/';
+                    window.location.href = '/login';
                 });
-            } else {
+            }else {
                 navLinks.innerHTML = `
-                    <a href="/login" style="margin-right: 15px; text-decoration: none; font-weight: 500; color: #555;">Đăng nhập</a>
+                    <a href="/login" class="btn btn-primary" style="margin-right: 12px;">Đăng nhập</a>
                     <a href="/register" class="btn btn-primary">Đăng ký</a>
                 `;
             }

@@ -10,10 +10,10 @@ class JobRepository:
 
     def create_job(self, payload: dict, ten_ky_nangs: list[str] = None) -> int:
         query = text("""
-                     INSERT INTO tin_tuyen_dung (tieu_de, mo_ta, han_nop, luong, dia_chi, so_nam_kinh_nghiem,
-                                                 ma_nha_tuyen_dung, ma_trang_thai)
-                     VALUES (:tieu_de, :mo_ta, :han_nop, :luong, :dia_chi, :so_nam_kinh_nghiem, :ma_nha_tuyen_dung,
-                             :ma_trang_thai)
+                     INSERT INTO tin_tuyen_dung (tieu_de, mo_ta, han_nop, min_salary, max_salary,
+                                                 dia_chi, so_nam_kinh_nghiem, ma_nha_tuyen_dung, ma_trang_thai)
+                     VALUES (:tieu_de, :mo_ta, :han_nop, :min_salary, :max_salary,
+                             :dia_chi, :so_nam_kinh_nghiem, :ma_nha_tuyen_dung, :ma_trang_thai)
                      """)
 
         result = self.db.execute(
@@ -22,7 +22,8 @@ class JobRepository:
                 "tieu_de": payload["tieu_de"],
                 "mo_ta": payload["mo_ta"],
                 "han_nop": payload["han_nop"],
-                "luong": payload.get("luong"),
+                "min_salary": payload.get("min_salary"),
+                "max_salary": payload.get("max_salary"),
                 "dia_chi": payload.get("dia_chi"),
                 "so_nam_kinh_nghiem": payload.get("so_nam_kinh_nghiem"),
                 "ma_nha_tuyen_dung": payload["ma_nha_tuyen_dung"],
@@ -81,7 +82,7 @@ class JobRepository:
 
     def search_and_filter_jobs(self, filters: dict) -> list[dict]:
         base_query = """
-            SELECT DISTINCT t.tin_id, t.tieu_de, t.mo_ta, t.han_nop, t.luong, t.dia_chi,
+            SELECT DISTINCT t.tin_id, t.tieu_de, t.mo_ta, t.han_nop, t.min_salary, t.max_salary, t.dia_chi,
                             t.so_nam_kinh_nghiem, t.ma_nha_tuyen_dung, t.ma_trang_thai,
                             c.ten_cong_ty, n.ten_nha_tuyen_dung
             FROM tin_tuyen_dung t
@@ -112,10 +113,10 @@ class JobRepository:
             params["max_experience"] = filters["max_experience"]
 
         if filters.get("min_salary") is not None:
-            base_query += " AND t.luong >= :min_salary"
+            base_query += " AND t.min_salary >= :min_salary"
             params["min_salary"] = filters["min_salary"]
         if filters.get("max_salary") is not None:
-            base_query += " AND t.luong <= :max_salary"
+            base_query += " AND t.max_salary <= :max_salary"
             params["max_salary"] = filters["max_salary"]
 
         if filters.get("skill_ids"):

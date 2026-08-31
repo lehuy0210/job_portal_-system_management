@@ -260,7 +260,7 @@
         if(!confirm(`Khởi tạo bảng nha_tuyen_dung (Mã: ${userId}) để sửa lỗi khóa ngoại?`)) return;
 
         try {
-            const res = await fetch('/api/v1/admin/insert-nha-tuyen_dung', {
+            const res = await fetch('/api/v1/admin/insert-nha-tuyen-dung', {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ ma_nha_tuyen_dung: userId })
