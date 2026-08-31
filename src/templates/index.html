@@ -11,50 +11,48 @@
         <h1>Tìm kiếm công việc mơ ước của bạn</h1>
         <p>Hàng ngàn cơ hội việc làm từ các công ty hàng đầu đang chờ đón bạn.</p>
 
-        <form class="filter-container" id="filterForm">
-            <div class="filter-group col-span-2">
-                <label>Từ khóa (Tiêu đề / Mô tả)</label>
-                <input type="text" id="keyword" placeholder="VD: Backend, .NET, React...">
-            </div>
-            <div class="filter-group">
-                <label>Địa điểm làm việc</label>
-                <input type="text" id="dia_chi" placeholder="VD: Hồ Chí Minh, Quận 1...">
+        <form id="filterForm">
+            <div class="search-wrapper">
+                <div class="search-input-group">
+                    <span>🔍</span>
+                    <input type="text" id="keyword" placeholder="Tiêu đề, kỹ năng, công ty...">
+                </div>
+                <div class="search-input-group">
+                    <span>📍</span>
+                    <input type="text" id="dia_chi" placeholder="Địa điểm (VD: Hồ Chí Minh)">
+                </div>
+                <button type="submit" class="btn btn-primary btn-search">Tìm việc</button>
             </div>
 
-            <div class="filter-group">
-                <label>Lương tối thiểu (VNĐ)</label>
-                <input type="number" id="min_salary" placeholder="VD: 10000000" min="0">
-            </div>
-            <div class="filter-group">
-                <label>Lương tối đa (VNĐ)</label>
-                <input type="number" id="max_salary" placeholder="VD: 30000000" min="0">
-            </div>
-            <div class="filter-group">
-                <label>Kỹ năng yêu cầu</label>
-                <select id="skill_id">
-                    <option value="">-- Tất cả kỹ năng --</option>
+            <div class="quick-filters">
+                <select id="salary_range">
+                    <option value="">💰 Tất cả mức lương</option>
+                    <option value="0-10000000">Dưới 10 triệu</option>
+                    <option value="10000000-20000000">10 - 20 triệu</option>
+                    <option value="20000000-30000000">20 - 30 triệu</option>
+                    <option value="30000000-999999999">Trên 30 triệu</option>
                 </select>
-            </div>
 
-            <div class="filter-group">
-                <label>Kinh nghiệm tối thiểu (Năm)</label>
-                <input type="number" id="min_experience" placeholder="VD: 1" min="0">
-            </div>
-            <div class="filter-group">
-                <label>Kinh nghiệm tối đa (Năm)</label>
-                <input type="number" id="max_experience" placeholder="VD: 5" min="0">
-            </div>
+                <select id="experience_range">
+                    <option value="">🎓 Tất cả kinh nghiệm</option>
+                    <option value="0-0">Chưa có kinh nghiệm</option>
+                    <option value="1-3">1 - 3 năm</option>
+                    <option value="3-5">3 - 5 năm</option>
+                    <option value="5-99">Trên 5 năm</option>
+                </select>
 
-            <div class="filter-actions col-span-3">
-                <button type="button" class="btn btn-outline" id="resetBtn" style="padding: 10px 20px;">Đặt lại</button>
-                <button type="submit" class="btn btn-primary" style="padding: 10px 25px;">Tìm kiếm & Lọc</button>
+                <select id="skill_id">
+                    <option value="">⚡ Tất cả kỹ năng</option>
+                </select>
+
+                <button type="button" class="btn btn-outline" id="resetBtn" style="border-radius: 30px; padding: 10px 16px;">↻ Đặt lại</button>
             </div>
         </form>
     </div>
 </div>
 
 <div class="job-list-section">
-    <h2 class="section-title">Danh sách việc làm</h2>
+    <h2 class="section-title">Việc làm mới nhất</h2>
     <div class="job-grid" id="public-job-list">
         <p style="color: #64748b; text-align: center; width: 100%;">Đang tải danh sách việc làm...</p>
     </div>
@@ -99,11 +97,23 @@
     async function loadPublicJobs() {
         const keyword = document.getElementById('keyword').value.trim();
         const diaChi = document.getElementById('dia_chi').value.trim();
-        const minSalary = document.getElementById('min_salary').value;
-        const maxSalary = document.getElementById('max_salary').value;
-        const minExp = document.getElementById('min_experience').value;
-        const maxExp = document.getElementById('max_experience').value;
         const skillId = document.getElementById('skill_id').value;
+
+        const salaryRange = document.getElementById('salary_range').value;
+        let minSalary = "", maxSalary = "";
+        if (salaryRange) {
+            const parts = salaryRange.split('-');
+            minSalary = parts[0];
+            maxSalary = parts[1];
+        }
+
+        const expRange = document.getElementById('experience_range').value;
+        let minExp = "", maxExp = "";
+        if (expRange) {
+            const parts = expRange.split('-');
+            minExp = parts[0];
+            maxExp = parts[1];
+        }
 
         const params = new URLSearchParams();
         if (keyword) params.append('keyword', keyword);
@@ -114,7 +124,6 @@
         if (maxExp) params.append('max_experience', maxExp);
         if (skillId) params.append('skill_ids', skillId);
 
-        // Mặc định luôn lọc tin đang mở (ma_trang_thai = 2) cho ứng viên xem
         params.append('ma_trang_thai', '2');
 
         try {
@@ -139,15 +148,24 @@
         container.innerHTML = '';
 
         if (jobs.length === 0) {
-            container.innerHTML = `<p style="color: #64748b; text-align: center; width: 100%; grid-column: 1 / -1;">Không tìm thấy công việc nào phù hợp với điều kiện lọc.</p>`;
+            container.innerHTML = `<p style="color: #64748b; text-align: center; width: 100%; grid-column: 1 / -1; padding: 40px 0;">Không tìm thấy công việc nào phù hợp với điều kiện lọc.</p>`;
             return;
         }
 
         jobs.forEach(job => {
             const tieuDe = job.tieu_de || "Chưa cập nhật tiêu đề";
             const congTy = job.ten_cong_ty || job.ten_nha_tuyen_dung || "Đang cập nhật công ty";
-            const luong = job.luong ? job.luong.toLocaleString('vi-VN') + " đ" : "Thỏa thuận";
             const diaChi = job.dia_chi || "Chưa cập nhật địa chỉ";
+
+            let luongText = "Thỏa thuận";
+            if (job.min_salary && job.max_salary) {
+                luongText = `${(job.min_salary / 1000000).toFixed(1)} - ${(job.max_salary / 1000000).toFixed(1)} triệu`;
+            } else if (job.min_salary) {
+                luongText = `Từ ${(job.min_salary / 1000000).toFixed(1)} triệu`;
+            } else if (job.max_salary) {
+                luongText = `Đến ${(job.max_salary / 1000000).toFixed(1)} triệu`;
+            }
+            luongText = luongText.replace('.0', '');
 
             let hanNop = "Không thời hạn";
             if (job.han_nop) {
@@ -167,8 +185,8 @@
                     <a href="#" class="job-title">${tieuDe}</a>
                     <div class="job-company">🏢 ${congTy}</div>
                     <div class="job-details">
-                        <span class="salary-badge">💰 Mức lương: ${luong}</span>
-                        <span>📍 Địa điểm: ${diaChi}</span>
+                        <span class="salary-badge">💰 ${luongText}</span>
+                        <span style="margin-top: 8px;">📍 ${diaChi}</span>
                         <span>⏱ Hạn nộp: ${hanNop}</span>
                     </div>
                     <div class="job-skills">
@@ -178,6 +196,12 @@
             `;
         });
     }
+
+    document.getElementById('filterForm').addEventListener('change', function(e) {
+        if(e.target.tagName === 'SELECT') {
+            loadPublicJobs();
+        }
+    });
 
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();

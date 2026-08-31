@@ -1,3 +1,4 @@
+import bcrypt
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -8,29 +9,40 @@ class AdminRepository:
 
     def get_all_users(self) -> list[dict]:
         query = text("""
-            SELECT u.id, u.username, u.ma_vai_tro,
-                   CASE WHEN n.ma_nha_tuyen_dung IS NOT NULL THEN 1 ELSE 0 END as has_profile
-            FROM nguoi_dung u
-            LEFT JOIN nha_tuyen_dung n ON u.id = n.ma_nha_tuyen_dung
-            ORDER BY u.id DESC
-        """)
+                     SELECT u.id,
+                            u.username,
+                            u.ma_vai_tro,
+                            CASE WHEN n.ma_nha_tuyen_dung IS NOT NULL THEN 1 ELSE 0 END as has_profile
+                     FROM nguoi_dung u
+                              LEFT JOIN nha_tuyen_dung n ON u.id = n.ma_nha_tuyen_dung
+                     ORDER BY u.id DESC
+                     """)
         rows = self.db.execute(query).fetchall()
         return [dict(row._mapping) for row in rows]
 
     def insert_account(self, payload: dict) -> int:
+        raw_password = payload["password"].encode("utf-8")
+        hashed_password = bcrypt.hashpw(raw_password, bcrypt.gensalt()).decode("utf-8")
+
+        data_to_insert = {
+            "username": payload["username"],
+            "password": hashed_password,
+            "ma_vai_tro": payload["ma_vai_tro"],
+        }
+
         query = text("""
-            INSERT INTO nguoi_dung (username, password, ma_vai_tro)
-            VALUES (:username, :password, :ma_vai_tro)
-        """)
-        result = self.db.execute(query, payload)
+                     INSERT INTO nguoi_dung (username, password, ma_vai_tro)
+                     VALUES (:username, :password, :ma_vai_tro)
+                     """)
+        result = self.db.execute(query, data_to_insert)
         self.db.commit()
         return result.lastrowid
 
     def insert_nha_tuyen_dung(self, ma_nha_tuyen_dung: int) -> int:
         query = text("""
-            INSERT INTO nha_tuyen_dung (ma_nha_tuyen_dung, ten_nha_tuyen_dung, email, so_dien_thoai)
-            VALUES (:ma, :ten, :email, :sdt)
-        """)
+                     INSERT INTO nha_tuyen_dung (ma_nha_tuyen_dung, ten_nha_tuyen_dung, email, so_dien_thoai)
+                     VALUES (:ma, :ten, :email, :sdt)
+                     """)
         self.db.execute(
             query,
             {

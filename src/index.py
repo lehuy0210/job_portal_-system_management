@@ -22,6 +22,16 @@ app.register_blueprint(job_bp)
 app.register_blueprint(admin_bp)
 
 
+@app.route("/.well-known/appspecific/com.chrome.devtools.json")
+def chrome_devtools_json():
+    return "", 204
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
+
+
 @app.route("/")
 def home():
     return render_template("index.html")

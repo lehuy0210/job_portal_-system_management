@@ -14,7 +14,8 @@ class JobCreateDTO(BaseModel):
     tieu_de: str = Field(..., min_length=1, max_length=255)
     mo_ta: str = Field(..., min_length=1)
     han_nop: date
-    luong: int | None = Field(None, ge=0)
+    min_salary: int | None = Field(None, ge=0)
+    max_salary: int | None = Field(None, ge=0)
     dia_chi: str | None = Field(None, min_length=1)
     so_nam_kinh_nghiem: int | None = Field(None, ge=0)
     ma_nha_tuyen_dung: int = Field(..., gt=0)
