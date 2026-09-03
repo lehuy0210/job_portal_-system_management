@@ -7,6 +7,7 @@ from src.admin_management.controllers import admin_bp
 from src.auth.controllers import auth_bp
 from src.common.exceptions import register_error_handlers
 from src.cv_management.controllers import cv_bp
+from src.cv_screening.controllers import screening_bp
 from src.job_management.controllers import job_bp
 from src.ung_vien.controllers import ung_vien_bp
 
@@ -15,11 +16,12 @@ app = Flask(__name__)
 
 register_error_handlers(app)
 
+app.register_blueprint(admin_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(cv_bp)
 app.register_blueprint(ung_vien_bp)
 app.register_blueprint(job_bp)
-app.register_blueprint(admin_bp)
+app.register_blueprint(screening_bp)
 
 
 @app.route("/.well-known/appspecific/com.chrome.devtools.json")
