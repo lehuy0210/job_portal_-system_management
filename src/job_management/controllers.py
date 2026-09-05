@@ -1,9 +1,9 @@
 from datetime import date
-
 from flask import Blueprint, jsonify, request
 from pydantic import BaseModel, Field, ValidationError
 from src.database import get_db_session
 
+from src.common.middleware import token_required  # Import middleware
 from .repositories import JobRepository
 from .services import JobService
 
@@ -49,6 +49,7 @@ def _get_dto_dict(dto):
 
 
 @job_bp.route("/", methods=["POST"])
+@token_required  # Bảo mật: Bắt buộc đăng nhập
 def create_job():
     try:
         dto = JobCreateDTO(**(request.get_json() or {}))
@@ -58,7 +59,12 @@ def create_job():
     db_session = get_db_session()
     try:
         service = JobService(JobRepository(db_session))
-        result = service.create(_get_dto_dict(dto))
+        payload = _get_dto_dict(dto)
+
+        # BẢO MẬT: Ghi đè ma_nha_tuyen_dung bằng user_id thực sự từ token
+        payload["ma_nha_tuyen_dung"] = request.current_user["user_id"]
+
+        result = service.create(payload)
     except Exception as e:
         return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
     finally:
@@ -70,7 +76,6 @@ def create_job():
 @job_bp.route("/search", methods=["GET"])
 def search_jobs():
     args = request.args
-
     skill_ids = []
 
     skill_ids_str = args.get("skill_ids")
@@ -79,8 +84,7 @@ def search_jobs():
             skill_ids.extend([int(x.strip()) for x in skill_ids_str.split(",") if x.strip()])
         except ValueError:
             return jsonify(
-                {"errors": [{"loc": ["query", "skill_ids"], "msg": "Kỹ năng phải là danh sách số nguyên"}]}
-            ), 400
+                {"errors": [{"loc": ["query", "skill_ids"], "msg": "Kỹ năng phải là danh sách số nguyên"}]}), 400
 
     skill_ids_list = args.getlist("skill_ids")
     for val in skill_ids_list:
@@ -125,6 +129,7 @@ def search_jobs():
 
 
 @job_bp.route("/<int:tin_id>/status", methods=["PUT"])
+@token_required  # Bảo mật: Bắt buộc đăng nhập
 def update_job_status(tin_id: int):
     try:
         dto = UpdateStatusDTO(**(request.get_json() or {}))
@@ -134,10 +139,19 @@ def update_job_status(tin_id: int):
     db_session = get_db_session()
     try:
         service = JobService(JobRepository(db_session))
-        success = service.update_status(tin_id, dto.ma_trang_thai)
+
+        # BẢO MẬT: Lấy user_id từ token để service kiểm tra quyền
+        user_id = request.current_user["user_id"]
+        success = service.update_status(tin_id, dto.ma_trang_thai, user_id)
+
         if success:
             return jsonify({"message": "Cập nhật trạng thái thành công"}), 200
         return jsonify({"message": "Không tìm thấy tin tuyển dụng"}), 404
+
+    except LookupError as e:
+        return jsonify({"message": str(e)}), 404
+    except PermissionError as e:
+        return jsonify({"message": str(e)}), 403
     except Exception as e:
         return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
     finally:

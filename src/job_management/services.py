@@ -18,7 +18,14 @@ class JobService:
     def search(self, filters: dict) -> list[dict]:
         return self.repository.search_and_filter_jobs(filters)
 
-    def update_status(self, tin_id: int, ma_trang_thai: int) -> bool:
+    def update_status(self, tin_id: int, ma_trang_thai: int, user_id: int) -> bool:
+        job = self.repository.get_job_by_id(tin_id)
+        if not job:
+            raise LookupError("Không tìm thấy tin tuyển dụng")
+
+        if job["ma_nha_tuyen_dung"] != user_id:
+            raise PermissionError("Bạn không có quyền sửa trạng thái tin này")
+
         return self.repository.update_job_status(tin_id, ma_trang_thai)
 
     def get_all_skills(self) -> list[dict]:
