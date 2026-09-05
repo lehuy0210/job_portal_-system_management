@@ -75,9 +75,12 @@ def update_cv(ma_cv: int):
     db_session = get_db_session()
     try:
         service = CVService(CVRepository(db_session))
-        updated = service.update(ma_cv, dto.model_dump())
+        user_id = request.current_user["user_id"]
+        updated = service.update(ma_cv, user_id, dto.model_dump())
     except LookupError as error:
         return jsonify({"message": str(error)}), 404
+    except PermissionError as error:
+        return jsonify({"message": str(error)}), 403
     finally:
         db_session.close()
 
@@ -92,9 +95,12 @@ def delete_cv(ma_cv: int):
     db_session = get_db_session()
     try:
         service = CVService(CVRepository(db_session))
-        deleted = service.delete(ma_cv)
+        user_id = request.current_user["user_id"]
+        deleted = service.delete(ma_cv, user_id)
     except LookupError as error:
         return jsonify({"message": str(error)}), 404
+    except PermissionError as error:
+        return jsonify({"message": str(error)}), 403
     finally:
         db_session.close()
 
