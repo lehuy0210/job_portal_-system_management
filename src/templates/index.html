@@ -47,6 +47,11 @@
 
                 <button type="button" class="btn btn-outline" id="resetBtn" style="border-radius: 30px; padding: 10px 16px;">↻ Đặt lại</button>
             </div>
+
+            <div class="hero-actions">
+                <a class="btn btn-outline hero-recommend-link" href="/screening">✦ Gợi ý việc làm theo CV</a>
+                <span>Đã có CV? Xem những cơ hội phù hợp nhất với bạn.</span>
+            </div>
         </form>
     </div>
 </div>
@@ -58,6 +63,17 @@
             <span class="skeleton-line skeleton-title"></span>
             <span class="skeleton-line"></span>
             <span class="skeleton-line short"></span>
+        </div>
+
+        <div class="apply-dialog" id="apply-dialog" hidden>
+            <div class="apply-dialog-card" role="dialog" aria-modal="true" aria-labelledby="apply-dialog-title">
+                <button class="apply-dialog-close" type="button" id="close-apply-dialog" aria-label="Đóng">×</button>
+                <p class="eyebrow">Nộp hồ sơ</p>
+                <h2 id="apply-dialog-title">Chọn CV để ứng tuyển</h2>
+                <label for="apply-cv-select">CV sử dụng</label>
+                <select id="apply-cv-select"></select>
+                <button class="btn btn-primary" type="button" id="confirm-apply">Gửi hồ sơ</button>
+            </div>
         </div>
         <div class="loading-state" aria-hidden="true">
             <span class="skeleton-line skeleton-title"></span>
@@ -83,6 +99,9 @@
         loadSkillsDropdown();
         loadPublicJobs();
     });
+
+    let selectedJobId = null;
+    let candidateCvs = [];
 
     async function loadSkillsDropdown() {
         try {
@@ -127,13 +146,13 @@
         const params = new URLSearchParams();
         if (keyword) params.append('keyword', keyword);
         if (diaChi) params.append('dia_chi', diaChi);
-        if (minSalary) params.append('min_salary', minSalary);
+        if (minSalary && minSalary !== '0') params.append('min_salary', minSalary);
         if (maxSalary) params.append('max_salary', maxSalary);
         if (minExp) params.append('min_experience', minExp);
         if (maxExp) params.append('max_experience', maxExp);
         if (skillId) params.append('skill_ids', skillId);
 
-        params.append('ma_trang_thai', '2');
+        params.append('ma_trang_thai', '8');  // 8 = Đang mở
 
         try {
             const res = await fetch(`/api/v1/jobs/search?${params.toString()}`, {
@@ -206,6 +225,7 @@
                     <div class="job-skills">
                         ${skillsHtml}
                     </div>
+                    ${localStorage.getItem('ma_vai_tro') === '1' ? `<button class="btn btn-primary apply-job-btn" type="button" onclick="openApplyDialog(${job.tin_id}, '${tieuDe.replace(/'/g, "\\'")}')">Ứng tuyển</button>` : ''}
                 </article>
             `;
         });
@@ -226,6 +246,56 @@
         document.getElementById('filterForm').reset();
         document.getElementById('skill_id').value = "";
         loadPublicJobs();
+    });
+
+    async function openApplyDialog(jobId, title) {
+        selectedJobId = jobId;
+        document.getElementById('apply-dialog-title').textContent = `Ứng tuyển: ${title}`;
+        const select = document.getElementById('apply-cv-select');
+        select.innerHTML = '<option>Đang tải CV...</option>';
+        document.getElementById('apply-dialog').hidden = false;
+        try {
+            const response = await fetch('/api/v1/cv/ung-vien', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Không thể tải CV.');
+            candidateCvs = result.data || [];
+            select.innerHTML = candidateCvs.length
+                ? candidateCvs.map(cv => `<option value="${cv.ma_cv}">CV #${cv.ma_cv} · ${(cv.tom_tat || 'Chưa có tóm tắt').slice(0, 60)}</option>`).join('')
+                : '<option value="">Bạn chưa có CV</option>';
+        } catch (error) {
+            select.innerHTML = '<option value="">Không thể tải CV</option>';
+            showToast(error.message, 'danger');
+        }
+    }
+
+    document.getElementById('close-apply-dialog').addEventListener('click', () => {
+        document.getElementById('apply-dialog').hidden = true;
+    });
+
+    document.getElementById('confirm-apply').addEventListener('click', async () => {
+        const cvId = document.getElementById('apply-cv-select').value;
+        if (!selectedJobId || !cvId) {
+            showToast('Hãy tạo và chọn một CV trước khi ứng tuyển.', 'danger');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/v1/jobs/${selectedJobId}/apply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify({ ma_cv: Number(cvId) })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Nộp hồ sơ thất bại.');
+            document.getElementById('apply-dialog').hidden = true;
+            showToast(result.message || 'Nộp hồ sơ thành công.', 'success');
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
     });
 </script>
 {% endblock %}

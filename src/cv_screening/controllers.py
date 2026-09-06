@@ -9,7 +9,7 @@ screening_bp = Blueprint("screening", __name__, url_prefix="/api/v1/screening")
 
 @screening_bp.route("/extract/<int:ma_cv>", methods=["POST"])
 def extract_cv(ma_cv: int):
-    payload = request.get_json() or {}
+    payload = request.get_json(silent=True, force=True) or {}
     try:
         dto = CVExtractRequestDTO(**payload)
     except ValidationError as e:

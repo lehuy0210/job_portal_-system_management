@@ -35,6 +35,45 @@
     box-shadow: var(--shadow-md);
 }
 
+.applications-panel {
+    margin-bottom: 2rem;
+    padding: 1.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-white);
+    box-shadow: var(--shadow-md);
+}
+
+.applications-panel[hidden] {
+    display: none;
+}
+
+.applications-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.applications-heading h3 {
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.applications-table small {
+    display: block;
+    color: var(--text-muted);
+}
+
+.application-status {
+    color: var(--primary-hover);
+    font-weight: 600;
+}
+
+.application-btn {
+    white-space: nowrap;
+}
+
 .job-form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;

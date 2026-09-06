@@ -5,11 +5,14 @@ from datetime import date
 from src.common.middleware import token_required
 
 
-# Giả lập middleware đăng nhập
-def mock_token_required_with_user(user_id=1):
+# Giả lập middleware đăng nhập hỗ trợ động role
+def mock_token_required_dynamic():
     def decorator(f):
         def wrapper(*args, **kwargs):
-            request.current_user = {"user_id": user_id}
+            # Lấy thông tin user từ headers giả lập
+            user_id = request.headers.get("X-Mock-User-Id", "1")
+            role = request.headers.get("X-Mock-Role", "1")
+            request.current_user = {"user_id": int(user_id), "ma_vai_tro": int(role)}
             return f(*args, **kwargs)
 
         wrapper.__name__ = f.__name__
@@ -18,7 +21,7 @@ def mock_token_required_with_user(user_id=1):
     return decorator
 
 
-patch("src.common.middleware.token_required", mock_token_required_with_user(user_id=1)).start()
+patch("src.common.middleware.token_required", mock_token_required_dynamic()).start()
 
 # Chú ý: Đổi chữ 'job' thành tên thư mục chứa controller của em nếu cần
 from src.job_management.controllers import job_bp
@@ -180,3 +183,64 @@ def test_update_job_status_idor_blocked(mock_db, mock_service, client):
                 assert response.status_code == 500
         except Exception:
             pass
+
+
+# ==========================================
+# 4. CASE HỒ SƠ ỨNG TUYỂN (APPLICATIONS)
+# ==========================================
+
+@patch(MOCK_JOB_SERVICE)
+@patch(MOCK_DB_SESSION)
+def test_apply_job_success(mock_db, mock_service, client):
+    """Nghiệp vụ: Ứng viên nộp hồ sơ thành công"""
+    mock_service.return_value.apply_job.return_value = {"ma_ho_so": 10, "status": "Mới nộp"}
+    
+    headers = {"X-Mock-User-Id": "4", "X-Mock-Role": "1"}
+    response = client.post("/api/v1/jobs/1/apply", json={"ma_cv": 1}, headers=headers)
+    
+    assert response.status_code == 201
+    assert response.json["message"] == "Nộp hồ sơ thành công"
+    assert response.json["data"]["ma_ho_so"] == 10
+    mock_service.return_value.apply_job.assert_called_once_with(4, 1, 1)
+
+def test_apply_job_forbidden(client):
+    """Phân quyền: Nhà tuyển dụng cố tình nộp hồ sơ (Âm -> 403)"""
+    headers = {"X-Mock-User-Id": "2", "X-Mock-Role": "2"}
+    response = client.post("/api/v1/jobs/1/apply", json={"ma_cv": 1}, headers=headers)
+    
+    assert response.status_code == 403
+    assert "Chỉ ứng viên mới có quyền" in response.json["message"]
+
+@patch(MOCK_JOB_SERVICE)
+@patch(MOCK_DB_SESSION)
+def test_get_job_applications_success(mock_db, mock_service, client):
+    """Nghiệp vụ: NTD xem danh sách hồ sơ của tin tuyển dụng"""
+    mock_service.return_value.get_job_applications.return_value = [{"ma_ho_so": 1, "ma_ung_vien": 4}]
+    
+    headers = {"X-Mock-User-Id": "2", "X-Mock-Role": "2"}
+    response = client.get("/api/v1/jobs/1/applications", headers=headers)
+    
+    assert response.status_code == 200
+    assert len(response.json["data"]) == 1
+    mock_service.return_value.get_job_applications.assert_called_once_with(2, 1)
+
+def test_get_job_applications_forbidden(client):
+    """Phân quyền: Ứng viên cố xem danh sách hồ sơ (Âm -> 403)"""
+    headers = {"X-Mock-User-Id": "4", "X-Mock-Role": "1"}
+    response = client.get("/api/v1/jobs/1/applications", headers=headers)
+    
+    assert response.status_code == 403
+    assert "Chỉ nhà tuyển dụng mới có quyền" in response.json["message"]
+
+@patch(MOCK_JOB_SERVICE)
+@patch(MOCK_DB_SESSION)
+def test_update_application_status_success(mock_db, mock_service, client):
+    """Nghiệp vụ: NTD cập nhật trạng thái hồ sơ"""
+    mock_service.return_value.update_application_status.return_value = True
+    
+    headers = {"X-Mock-User-Id": "2", "X-Mock-Role": "2"}
+    response = client.put("/api/v1/jobs/applications/10/status", json={"ma_trang_thai": 5}, headers=headers)
+    
+    assert response.status_code == 200
+    assert response.json["message"] == "Cập nhật trạng thái thành công"
+    mock_service.return_value.update_application_status.assert_called_once_with(2, 10, 5)

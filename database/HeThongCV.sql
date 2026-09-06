@@ -85,6 +85,7 @@ CREATE TABLE `cv` (
   `source` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `hoc_van` text COLLATE utf8mb4_unicode_ci,
   `kinh_nghiem_lam_viec` text COLLATE utf8mb4_unicode_ci,
+  `so_nam_kinh_nghiem` int DEFAULT 0,
   `ngay_tao` datetime DEFAULT NULL,
   `ngay_sua` datetime DEFAULT NULL,
   `ma_ung_vien` int NOT NULL,
