@@ -1,6 +1,6 @@
 .admin-container {
-    max-width: 1200px;
-    margin: 40px auto;
+    max-width: var(--content-width);
+    margin: 56px auto 80px;
     padding: 0 20px;
 }
 
@@ -11,12 +11,18 @@
     margin-bottom: 25px;
 }
 
+.admin-header h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    letter-spacing: -1px;
+}
+
 .admin-card {
     background: #fff;
-    border-radius: 8px;
+    border-radius: 14px;
     padding: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    border: 1px solid #dee2e6;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
 }
 
 .table {
@@ -26,10 +32,10 @@
 }
 
 .table th {
-    background-color: #f8f9fa;
+    background-color: #edf3ef;
     padding: 12px 15px;
     text-align: left;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 1px solid var(--border-color);
     color: #495057;
 }
 
@@ -54,6 +60,24 @@
 .role-uv {
     background-color: #d1fae5;
     color: #065f46;
+}
+
+@media (max-width: 700px) {
+    .admin-header {
+        align-items: flex-start;
+        gap: 1rem;
+        flex-direction: column;
+    }
+
+    .admin-header .btn {
+        width: 100%;
+    }
+
+    .table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
 }
 
     .admin-container {

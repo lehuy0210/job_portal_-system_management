@@ -54,7 +54,16 @@
 <div class="job-list-section">
     <h2 class="section-title">Việc làm mới nhất</h2>
     <div class="job-grid" id="public-job-list">
-        <p style="color: #64748b; text-align: center; width: 100%;">Đang tải danh sách việc làm...</p>
+        <div class="loading-state" role="status" aria-live="polite">
+            <span class="skeleton-line skeleton-title"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line short"></span>
+        </div>
+        <div class="loading-state" aria-hidden="true">
+            <span class="skeleton-line skeleton-title"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line short"></span>
+        </div>
     </div>
 </div>
 
@@ -136,10 +145,15 @@
                 const result = await res.json();
                 renderJobs(result.data || []);
             } else {
-                document.getElementById('public-job-list').innerHTML = `<p style="color: red; width: 100%; text-align: center;">Không thể tải dữ liệu việc làm.</p>`;
+                containerError('Không thể tải dữ liệu việc làm.');
             }
         } catch (error) {
-            document.getElementById('public-job-list').innerHTML = `<p style="color: red; width: 100%; text-align: center;">Lỗi kết nối máy chủ.</p>`;
+            containerError('Lỗi kết nối máy chủ.');
+        }
+
+        function containerError(message) {
+            document.getElementById('public-job-list').innerHTML =
+                `<div class="empty-state error-state" role="alert"><strong>${message}</strong><span>Vui lòng thử lại sau ít phút.</span></div>`;
         }
     }
 
@@ -148,7 +162,7 @@
         container.innerHTML = '';
 
         if (jobs.length === 0) {
-            container.innerHTML = `<p style="color: #64748b; text-align: center; width: 100%; grid-column: 1 / -1; padding: 40px 0;">Không tìm thấy công việc nào phù hợp với điều kiện lọc.</p>`;
+            container.innerHTML = `<div class="empty-state"><strong>Chưa có công việc phù hợp</strong><span>Thử đổi từ khóa hoặc nới rộng bộ lọc để xem thêm kết quả.</span></div>`;
             return;
         }
 
@@ -181,8 +195,8 @@
             }
 
             container.innerHTML += `
-                <div class="job-card">
-                    <a href="#" class="job-title">${tieuDe}</a>
+                <article class="job-card">
+                    <h3 class="job-title">${tieuDe}</h3>
                     <div class="job-company">🏢 ${congTy}</div>
                     <div class="job-details">
                         <span class="salary-badge">💰 ${luongText}</span>
@@ -192,7 +206,7 @@
                     <div class="job-skills">
                         ${skillsHtml}
                     </div>
-                </div>
+                </article>
             `;
         });
     }
