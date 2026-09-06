@@ -581,6 +581,15 @@ body {
 }
 .job-title:hover { color: var(--primary-color); }
 
+.job-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.job-title a:hover {
+    color: var(--primary-color);
+}
+
 .job-company {
     font-size: 0.85rem;
     color: #64748b;

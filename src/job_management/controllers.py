@@ -138,6 +138,21 @@ def search_jobs():
     return jsonify({"data": result}), 200
 
 
+@job_bp.route("/<int:tin_id>", methods=["GET"])
+def get_job_detail(tin_id: int):
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        job = service.repository.get_job_by_id(tin_id)
+        if not job:
+            return jsonify({"message": "Không tìm thấy tin tuyển dụng"}), 404
+        return jsonify({"data": job}), 200
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
 @job_bp.route("/<int:tin_id>/status", methods=["PUT"])
 @token_required  # Bảo mật: Bắt buộc đăng nhập
 def update_job_status(tin_id: int):
@@ -226,6 +241,25 @@ def get_job_applications(tin_id: int):
         return jsonify({"data": result}), 200
     except PermissionError as e:
         return jsonify({"message": str(e)}), 403
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
+@job_bp.route("/applications/me", methods=["GET"])
+@token_required
+def get_my_applications():
+    # Chỉ ứng viên mới được xem lịch sử của mình
+    if request.current_user.get("ma_vai_tro") != 1:
+        return jsonify({"message": "Chỉ ứng viên mới có quyền xem lịch sử hồ sơ."}), 403
+
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        user_id = request.current_user["user_id"]
+        result = service.get_my_applications(user_id)
+        return jsonify({"data": result}), 200
     except Exception as e:
         return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
     finally:

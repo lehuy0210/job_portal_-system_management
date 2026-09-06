@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Không tìm thấy trang - JobPortal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .not-found-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        text-align: center;
+        padding: 40px;
+    }
+    .not-found-code {
+        font-size: 120px;
+        font-weight: 800;
+        color: #e2e8f0;
+        margin-bottom: 20px;
+        line-height: 1;
+    }
+    .not-found-title {
+        font-size: 24px;
+        color: #1e293b;
+        margin-bottom: 15px;
+    }
+    .not-found-desc {
+        color: #64748b;
+        margin-bottom: 30px;
+        max-width: 500px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="not-found-container">
+    <div class="not-found-code">404</div>
+    <h1 class="not-found-title">Không tìm thấy trang</h1>
+    <p class="not-found-desc">Trang bạn đang tìm kiếm không tồn tại, đã bị xóa hoặc bạn không có quyền truy cập.</p>
+    <a href="/" class="btn btn-primary">Trở về trang chủ</a>
+</div>
+{% endblock %}

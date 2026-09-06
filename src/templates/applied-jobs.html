@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Lịch sử ứng tuyển - JobPortal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .applied-container {
+        padding: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .applied-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    .applied-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .applied-table th, .applied-table td {
+        padding: 15px 20px;
+        text-align: left;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .applied-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .status-new { background: #e0f2fe; color: #0284c7; }
+    .status-interview { background: #fef08a; color: #854d0e; }
+    .status-success { background: #dcfce3; color: #166534; }
+    .status-fail { background: #fee2e2; color: #991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="applied-container">
+    <div class="applied-header">
+        <h2>Lịch sử ứng tuyển của tôi</h2>
+    </div>
+
+    <table class="applied-table">
+        <thead>
+            <tr>
+                <th>Vị trí ứng tuyển</th>
+                <th>Công ty</th>
+                <th>Mức lương</th>
+                <th>Địa điểm</th>
+                <th>Ngày nộp</th>
+                <th>Trạng thái</th>
+            </tr>
+        </thead>
+        <tbody id="applied-list">
+            <tr>
+                <td colspan="6" style="text-align:center;">Đang tải dữ liệu...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    fetchApplications();
+});
+
+function getStatusClass(statusName) {
+    if(statusName === "Mới nộp") return "status-new";
+    if(statusName === "Phỏng vấn") return "status-interview";
+    if(statusName === "Trúng tuyển") return "status-success";
+    if(statusName === "Từ chối") return "status-fail";
+    return "status-new";
+}
+
+async function fetchApplications() {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+        window.location.href = "/login";
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/v1/jobs/applications/me", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+        
+        if (res.status === 401 || res.status === 403) {
+            showToast("Bạn không có quyền truy cập trang này.", "danger");
+            window.location.href = "/";
+            return;
+        }
+
+        const data = await res.json();
+        const tbody = document.getElementById("applied-list");
+        tbody.innerHTML = "";
+        
+        if (!data.data || data.data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Bạn chưa nộp hồ sơ nào.</td></tr>";
+            return;
+        }
+
+        data.data.forEach(app => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><a href="/jobs/${app.tin_id}" style="color:#2563eb; font-weight:500;">${app.tieu_de}</a></td>
+                <td>${app.ten_cong_ty}</td>
+                <td>${app.luong ? app.luong.toLocaleString('vi-VN') + ' VNĐ' : 'Thỏa thuận'}</td>
+                <td>${app.dia_chi || 'Không rõ'}</td>
+                <td>${app.ngay_nop}</td>
+                <td><span class="status-badge ${getStatusClass(app.ten_trang_thai)}">${app.ten_trang_thai}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error(err);
+        showToast("Lỗi khi tải lịch sử ứng tuyển.", "danger");
+    }
+}
+</script>
+{% endblock %}

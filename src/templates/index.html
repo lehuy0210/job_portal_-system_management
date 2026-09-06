@@ -64,22 +64,22 @@
             <span class="skeleton-line"></span>
             <span class="skeleton-line short"></span>
         </div>
-
-        <div class="apply-dialog" id="apply-dialog" hidden>
-            <div class="apply-dialog-card" role="dialog" aria-modal="true" aria-labelledby="apply-dialog-title">
-                <button class="apply-dialog-close" type="button" id="close-apply-dialog" aria-label="Đóng">×</button>
-                <p class="eyebrow">Nộp hồ sơ</p>
-                <h2 id="apply-dialog-title">Chọn CV để ứng tuyển</h2>
-                <label for="apply-cv-select">CV sử dụng</label>
-                <select id="apply-cv-select"></select>
-                <button class="btn btn-primary" type="button" id="confirm-apply">Gửi hồ sơ</button>
-            </div>
-        </div>
         <div class="loading-state" aria-hidden="true">
             <span class="skeleton-line skeleton-title"></span>
             <span class="skeleton-line"></span>
             <span class="skeleton-line short"></span>
         </div>
+    </div>
+</div>
+
+<div class="apply-dialog" id="apply-dialog" hidden>
+    <div class="apply-dialog-card" role="dialog" aria-modal="true" aria-labelledby="apply-dialog-title">
+        <button class="apply-dialog-close" type="button" id="close-apply-dialog" aria-label="Đóng">×</button>
+        <p class="eyebrow">Nộp hồ sơ</p>
+        <h2 id="apply-dialog-title">Chọn CV để ứng tuyển</h2>
+        <label for="apply-cv-select">CV sử dụng</label>
+        <select id="apply-cv-select"></select>
+        <button class="btn btn-primary" type="button" id="confirm-apply">Gửi hồ sơ</button>
     </div>
 </div>
 
@@ -215,7 +215,7 @@
 
             container.innerHTML += `
                 <article class="job-card">
-                    <h3 class="job-title">${tieuDe}</h3>
+                    <h3 class="job-title"><a href="/jobs/${job.tin_id}">${tieuDe}</a></h3>
                     <div class="job-company">🏢 ${congTy}</div>
                     <div class="job-details">
                         <span class="salary-badge">💰 ${luongText}</span>

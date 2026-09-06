@@ -42,22 +42,52 @@ def get_my_cvs():
         db_session.close()
 
 
+import os
+from werkzeug.utils import secure_filename
+import time
+from flask import current_app
+
 @cv_bp.route("/", methods=["POST"])
 @token_required
 def create_cv():
+    if "cv_file" not in request.files:
+        return jsonify({"message": "Thiếu file CV"}), 400
+        
+    file = request.files["cv_file"]
+    if file.filename == "":
+        return jsonify({"message": "Chưa chọn file"}), 400
+
     try:
-        dto = CVCreateDTO(**(request.get_json() or {}))
+        dto = CVCreateDTO(
+            tom_tat=request.form.get("tom_tat", ""),
+            duong_dan="temp",
+            source="Upload",
+            hoc_van=request.form.get("hoc_van", ""),
+            kinh_nghiem_lam_viec=request.form.get("kinh_nghiem", "")
+        )
     except ValidationError as error:
         return _validation_error(error)
+
+    # Lưu file vào static/uploads/cv/
+    filename = secure_filename(file.filename)
+    filename = f"{int(time.time())}_{filename}"
+    upload_folder = os.path.join(current_app.root_path, "static", "uploads", "cv")
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    file_path = os.path.join(upload_folder, filename)
+    file.save(file_path)
+    
+    # Cập nhật đường dẫn
+    dto.duong_dan = f"/static/uploads/cv/{filename}"
 
     db_session = get_db_session()
     try:
         service = CVService(CVRepository(db_session))
-
         payload = dto.model_dump()
         payload["ma_ung_vien"] = request.current_user["user_id"]
-
         result = service.create(payload)
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
     finally:
         db_session.close()
 

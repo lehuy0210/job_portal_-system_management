@@ -59,7 +59,13 @@ class JobRepository:
         return tin_id
 
     def get_job_by_id(self, tin_id: int) -> dict | None:
-        query = text("SELECT * FROM tin_tuyen_dung WHERE tin_id = :tin_id")
+        query = text("""
+            SELECT t.*, c.ten_cong_ty, n.ten_nha_tuyen_dung 
+            FROM tin_tuyen_dung t
+            JOIN nha_tuyen_dung n ON t.ma_nha_tuyen_dung = n.ma_nha_tuyen_dung
+            LEFT JOIN cong_ty c ON n.ma_nha_tuyen_dung = c.ma_nha_tuyen_dung
+            WHERE t.tin_id = :tin_id
+        """)
         job = self.db.execute(query, {"tin_id": tin_id}).fetchone()
         if not job:
             return None
@@ -235,6 +241,28 @@ class JobRepository:
             app_dict["ky_nangs"] = [dict(s._mapping) for s in skills]
             result.append(app_dict)
 
+        return result
+
+    def get_candidate_applications(self, ma_ung_vien: int) -> list[dict]:
+        query = text("""
+            SELECT h.ma_ho_so, h.ngay_nop, h.tin_id, h.ma_trang_thai,
+                   t.tieu_de, t.luong, t.dia_chi, ct.ten_cong_ty,
+                   tt.ten_trang_thai
+            FROM ho_so_ung_tuyen h
+            JOIN tin_tuyen_dung t ON h.tin_id = t.tin_id
+            JOIN nha_tuyen_dung ntd ON t.ma_nha_tuyen_dung = ntd.ma_nha_tuyen_dung
+            JOIN cong_ty ct ON ntd.ma_nha_tuyen_dung = ct.ma_nha_tuyen_dung
+            JOIN trang_thai tt ON h.ma_trang_thai = tt.ma_trang_thai
+            WHERE h.ma_ung_vien = :ma_ung_vien
+            ORDER BY h.ngay_nop DESC
+        """)
+        rows = self.db.execute(query, {"ma_ung_vien": ma_ung_vien}).fetchall()
+        result = []
+        for r in rows:
+            app_dict = dict(r._mapping)
+            if isinstance(app_dict.get("ngay_nop"), date):
+                app_dict["ngay_nop"] = app_dict["ngay_nop"].isoformat()
+            result.append(app_dict)
         return result
 
     def update_app_status(self, ma_ho_so: int, ma_trang_thai: int, ma_nha_tuyen_dung: int) -> bool:

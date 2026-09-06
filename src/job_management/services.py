@@ -54,6 +54,9 @@ class JobService:
         # Repository function handles ownership check (throws PermissionError)
         return self.repository.get_applications_by_job(tin_id, user_id)
 
+    def get_my_applications(self, user_id: int) -> list[dict]:
+        return self.repository.get_candidate_applications(user_id)
+
     def update_application_status(self, user_id: int, ma_ho_so: int, ma_trang_thai: int) -> bool:
         # Repository function handles ownership check
         return self.repository.update_app_status(ma_ho_so, ma_trang_thai, user_id)
