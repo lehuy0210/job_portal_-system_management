@@ -16,6 +16,53 @@
         cursor: pointer;
         transition: all 0.2s;
     }
+
+    async function loadApplications(tinId, title) {
+        const panel = document.getElementById('applications-panel');
+        const body = document.getElementById('applications-body');
+        document.getElementById('applications-title').textContent = `Hồ sơ ứng tuyển · ${title}`;
+        panel.hidden = false;
+        body.innerHTML = '<tr><td colspan="5">Đang tải hồ sơ...</td></tr>';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        try {
+            const response = await fetch(`/api/v1/jobs/${tinId}/applications`, { headers: getAuthHeaders() });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Không thể tải hồ sơ.');
+            const applications = result.data || [];
+            body.innerHTML = applications.length ? applications.map(application => `
+                <tr>
+                    <td><strong>${application.ho_ten || 'Chưa cập nhật'}</strong><small>${application.email || ''}</small></td>
+                    <td>${application.ngay_nop || '-'}</td>
+                    <td>CV #${application.ma_cv}</td>
+                    <td><span class="application-status">${application.ten_trang_thai || 'Mới nộp'}</span></td>
+                    <td>
+                        <select class="status-select" onchange="updateApplicationStatus(${application.ma_ho_so}, this)">
+                            <option value="1" ${application.ma_trang_thai === 1 ? 'selected' : ''}>Mới nộp</option>
+                            <option value="4" ${application.ma_trang_thai === 4 ? 'selected' : ''}>Phỏng vấn</option>
+                            <option value="5" ${application.ma_trang_thai === 5 ? 'selected' : ''}>Trúng tuyển</option>
+                            <option value="6" ${application.ma_trang_thai === 6 ? 'selected' : ''}>Từ chối</option>
+                        </select>
+                    </td>
+                </tr>`).join('') : '<tr><td colspan="5">Chưa có hồ sơ ứng tuyển.</td></tr>';
+        } catch (error) {
+            body.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
+        }
+    }
+
+    async function updateApplicationStatus(applicationId, select) {
+        try {
+            const response = await fetch(`/api/v1/jobs/applications/${applicationId}/status`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ma_trang_thai: Number(select.value) })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Cập nhật thất bại.');
+            showToast(result.message || 'Cập nhật trạng thái thành công.', 'success');
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
+    }
     .status-select:focus {
         border-color: #2563eb;
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
@@ -30,7 +77,10 @@
 <div class="job-container">
     <div class="job-header">
         <h2>Quản lý tin tuyển dụng</h2>
-        <button class="btn btn-primary" onclick="showForm()">+ Đăng tin mới</button>
+        <div class="job-header-actions">
+            <a class="btn btn-outline" href="/screening">Sàng lọc CV</a>
+            <button class="btn btn-primary" onclick="showForm()">+ Đăng tin mới</button>
+        </div>
     </div>
 
     <div id="job-form-container" class="job-form-container" style="display: none;">
@@ -86,6 +136,25 @@
         </form>
     </div>
 
+    <section id="applications-panel" class="applications-panel" hidden>
+        <div class="applications-heading">
+            <h3 id="applications-title">Hồ sơ ứng tuyển</h3>
+            <button class="btn btn-outline" type="button" onclick="document.getElementById('applications-panel').hidden = true">Đóng</button>
+        </div>
+        <table class="job-table applications-table">
+            <thead>
+                <tr>
+                    <th>Ứng viên</th>
+                    <th>Ngày nộp</th>
+                    <th>CV</th>
+                    <th>Trạng thái</th>
+                    <th>Cập nhật</th>
+                </tr>
+            </thead>
+            <tbody id="applications-body"></tbody>
+        </table>
+    </section>
+
     <table class="job-table">
         <thead>
             <tr>
@@ -94,6 +163,7 @@
                 <th>Hạn nộp</th>
                 <th>Mức lương</th>
                 <th>Trạng thái</th>
+                <th>Ứng viên</th>
             </tr>
         </thead>
         <tbody id="job-list">
@@ -202,11 +272,12 @@
                                     <option value="10" ${currentStatus === 10 ? 'selected' : ''}>Đã đóng</option>
                                 </select>
                             </td>
+                            <td><button class="btn btn-outline application-btn" type="button" onclick="loadApplications(${job.tin_id}, '${tieuDe.replace(/'/g, "\\'")}')">Xem hồ sơ</button></td>
                         </tr>
                     `;
                 });
             } else {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;">Bạn chưa có tin tuyển dụng nào.</td></tr>`;
+                tbody.innerHTML = `                <tr><td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;">Bạn chưa có tin tuyển dụng nào.</td></tr>`;
             }
         } catch (error) {
             showToast("Lỗi khi tải danh sách tin tuyển dụng.", "danger");

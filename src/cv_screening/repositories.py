@@ -34,17 +34,19 @@ class ScreeningRepository:
         cv_dict["skill_ids"] = [s["ma_ky_nang"] for s in cv_dict["ky_nangs"]]
         return cv_dict
 
-    def update_cv_extracted_data(self, ma_cv: int, payload: dict, skill_ids: list[int] = None):
+    def update_cv_extracted_data(self, ma_cv: int, payload: dict, skill_ids: list[int] = None, so_nam_kinh_nghiem: int = None):
         query = text("""
             UPDATE cv 
-            SET tom_tat = :tom_tat, hoc_van = :hoc_van, kinh_nghiem_lam_viec = :kinh_nghiem_lam_viec, ngay_sua = NOW()
+            SET tom_tat = :tom_tat, hoc_van = :hoc_van, kinh_nghiem_lam_viec = :kinh_nghiem_lam_viec,
+                so_nam_kinh_nghiem = :so_nam_kinh_nghiem, ngay_sua = NOW()
             WHERE ma_cv = :ma_cv
         """)
         self.db.execute(query, {
             "ma_cv": ma_cv,
             "tom_tat": payload.get("tom_tat"),
             "hoc_van": payload.get("hoc_van"),
-            "kinh_nghiem_lam_viec": payload.get("kinh_nghiem_lam_viec")
+            "kinh_nghiem_lam_viec": payload.get("kinh_nghiem_lam_viec"),
+            "so_nam_kinh_nghiem": so_nam_kinh_nghiem
         })
 
         if skill_ids:
@@ -79,14 +81,20 @@ class ScreeningRepository:
         return job_dict
 
     def get_applications_for_job(self, tin_id: int) -> list[dict]:
+        # Lấy hồ sơ đang ở các trạng thái đang xét tuyển:
+        # 'Mới nộp', 'Đã trích xuất', 'Đã khớp & xếp hạng'
+        # Loại bỏ hồ sơ bị Từ chối, Phỏng vấn, Trúng tuyển
         query = text("""
             SELECT h.ma_ho_so, h.ngay_nop, h.ma_ung_vien, h.tin_id, h.ma_cv, h.ma_trang_thai,
                    u.ho_ten, u.email, u.so_dien_thoai,
-                   c.tom_tat, c.hoc_van, c.kinh_nghiem_lam_viec, c.duong_dan
+                   c.tom_tat, c.hoc_van, c.kinh_nghiem_lam_viec, c.duong_dan, c.so_nam_kinh_nghiem
             FROM ho_so_ung_tuyen h
             JOIN ung_vien u ON h.ma_ung_vien = u.ma_ung_vien
             JOIN cv c ON h.ma_cv = c.ma_cv
+            JOIN trang_thai tt ON h.ma_trang_thai = tt.ma_trang_thai
             WHERE h.tin_id = :tin_id
+              AND tt.ten_trang_thai IN ('M\u1edbi n\u1ed9p', '\u0110\u00e3 tr\u00edch xu\u1ea5t', '\u0110\u00e3 kh\u1edbp & x\u1ebfp h\u1ea1ng')
+              AND tt.ma_doi_tuong = 1
         """)
         rows = self.db.execute(query, {"tin_id": tin_id}).fetchall()
 
@@ -114,13 +122,31 @@ class ScreeningRepository:
         self.db.execute(query, {"ma_ho_so": ma_ho_so, "ma_trang_thai": ma_trang_thai})
         self.db.commit()
 
+    def update_applications_status_by_cv(self, ma_cv: int, ma_trang_thai: int):
+        """Cập nhật sang 'Đã trích xuất' cho các hồ sơ đang ở 'Mới nộp'."""
+        query = text("""
+            UPDATE ho_so_ung_tuyen h
+            JOIN trang_thai tt ON h.ma_trang_thai = tt.ma_trang_thai
+            SET h.ma_trang_thai = :ma_trang_thai 
+            WHERE h.ma_cv = :ma_cv
+              AND tt.ten_trang_thai = 'M\u1edbi n\u1ed9p'
+              AND tt.ma_doi_tuong = 1
+        """)
+        self.db.execute(query, {"ma_cv": ma_cv, "ma_trang_thai": ma_trang_thai})
+        self.db.commit()
+
+
     def get_open_jobs(self) -> list[dict]:
+        # Tra cứu theo tên trạng thái “Đang mở” thay vì hardcode ID
+        # để tránh vỡ khi seed DB theo thứ tự khác
         query = text("""
             SELECT t.*, c.ten_cong_ty, n.ten_nha_tuyen_dung 
             FROM tin_tuyen_dung t
             JOIN nha_tuyen_dung n ON t.ma_nha_tuyen_dung = n.ma_nha_tuyen_dung
             LEFT JOIN cong_ty c ON n.ma_nha_tuyen_dung = c.ma_nha_tuyen_dung
-            WHERE t.ma_trang_thai = 8
+            JOIN trang_thai tt ON t.ma_trang_thai = tt.ma_trang_thai
+            WHERE tt.ten_trang_thai = '\u0110ang m\u1edf'
+              AND tt.ma_doi_tuong = 2
             ORDER BY t.tin_id DESC
         """)
         jobs = self.db.execute(query).fetchall()

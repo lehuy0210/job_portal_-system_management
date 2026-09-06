@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 
 from src.admin_management.controllers import admin_bp
 from src.auth.controllers import auth_bp
@@ -16,6 +16,14 @@ app = Flask(__name__)
 
 register_error_handlers(app)
 
+@app.errorhandler(404)
+def page_not_found(e):
+    # API endpoints
+    if request.path.startswith("/api/"):
+        return jsonify({"message": "Not Found"}), 404
+    # Web views
+    return render_template("404.html"), 404
+
 app.register_blueprint(admin_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(cv_bp)
@@ -29,9 +37,12 @@ def chrome_devtools_json():
     return "", 204
 
 
+from flask import send_from_directory
+
 @app.route("/favicon.ico")
 def favicon():
-    return "", 204
+    # Giả sử file favicon.ico nằm trong src/static/img/
+    return send_from_directory(os.path.join(app.root_path, "static", "img"), "favicon.ico", mimetype="image/vnd.microsoft.icon")
 
 
 @app.route("/")
@@ -67,6 +78,21 @@ def cv_preview_page():
 @app.route("/jobs")
 def job_management_page():
     return render_template("job-management.html")
+
+
+@app.route("/jobs/<int:tin_id>")
+def job_detail_page(tin_id: int):
+    return render_template("job-detail.html", tin_id=tin_id)
+
+
+@app.route("/lich-su-ung-tuyen")
+def applied_jobs_page():
+    return render_template("applied-jobs.html")
+
+
+@app.route("/screening")
+def screening_page():
+    return render_template("cv-screening.html")
 
 
 @app.route("/admin")

@@ -2,69 +2,93 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 80vh;
+    min-height: calc(100dvh - 74px);
+    padding: 3rem 1.25rem 5rem;
+    background:
+        radial-gradient(circle at 12% 20%, rgba(183, 219, 195, 0.32), transparent 28%),
+        radial-gradient(circle at 88% 80%, rgba(231, 222, 190, 0.24), transparent 25%);
 }
 
 .auth-form {
     background: white;
-    padding: 2.5rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: clamp(2rem, 5vw, 3.25rem);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
     width: 100%;
-    max-width: 400px;
+    max-width: 460px;
+    border: 1px solid var(--border-color);
 }
 
 .auth-form h2 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    color: #2c3e50;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    letter-spacing: -1px;
+    margin-bottom: 0.55rem;
+    color: var(--text-main);
+    text-wrap: balance;
+}
+
+.auth-form h2::after {
+    content: '  /  JobPortal';
+    display: block;
+    margin-top: 0.55rem;
+    color: var(--primary-color);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .form-group {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.35rem;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
+    margin-bottom: 0.45rem;
+    font-weight: 600;
+    color: var(--text-main);
 }
 
 .form-group input {
     width: 100%;
-    padding: 0.8rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     outline: none;
-    transition: border-color 0.3s;
+    color: var(--text-main);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-group input:focus {
-    border-color: #0056b3;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(24, 122, 90, 0.13);
 }
 
 .btn-full {
     width: 100%;
     padding: 0.8rem;
     font-size: 1.1rem;
-    margin-top: 10px;
+    margin-top: 0.4rem;
 }
 
 .auth-link {
     text-align: center;
-    margin-top: 1rem;
-    font-size: 0.9rem;
+    margin-top: 1.5rem;
+    font-size: 0.92rem;
+    color: var(--text-muted);
 }
 
 .auth-link a {
-    color: #0056b3;
+    color: var(--primary-color);
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .message {
     text-align: center;
     margin-top: 1rem;
     font-weight: bold;
-    color: #dc3545;
+    color: var(--danger-hover);
 }

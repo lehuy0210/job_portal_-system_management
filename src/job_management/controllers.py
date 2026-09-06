@@ -38,6 +38,16 @@ class UpdateStatusDTO(BaseModel):
     ma_trang_thai: int = Field(..., description="2: Đã mở, 9: Tạm dừng, 10: Đã đóng")
 
 
+# --- DTOs cho Ứng tuyển ---
+class ApplyJobDTO(BaseModel):
+    ma_cv: int = Field(..., gt=0)
+
+
+class UpdateAppStatusDTO(BaseModel):
+    # Trang thai ung tuyen: 4: Phong van, 5: Trung tuyen, 6: Tu choi
+    ma_trang_thai: int = Field(..., gt=0)
+
+
 def _validation_error(error: ValidationError):
     return jsonify({"errors": error.errors()}), 400
 
@@ -128,6 +138,21 @@ def search_jobs():
     return jsonify({"data": result}), 200
 
 
+@job_bp.route("/<int:tin_id>", methods=["GET"])
+def get_job_detail(tin_id: int):
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        job = service.repository.get_job_by_id(tin_id)
+        if not job:
+            return jsonify({"message": "Không tìm thấy tin tuyển dụng"}), 404
+        return jsonify({"data": job}), 200
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
 @job_bp.route("/<int:tin_id>/status", methods=["PUT"])
 @token_required  # Bảo mật: Bắt buộc đăng nhập
 def update_job_status(tin_id: int):
@@ -165,6 +190,107 @@ def get_all_skills():
         service = JobService(JobRepository(db_session))
         skills = service.get_all_skills()
         return jsonify({"data": skills}), 200
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
+# ==========================================
+# API HỒ SƠ ỨNG TUYỂN (APPLICATIONS)
+# ==========================================
+
+@job_bp.route("/<int:tin_id>/apply", methods=["POST"])
+@token_required
+def apply_for_job(tin_id: int):
+    # Chỉ ứng viên mới được nộp hồ sơ
+    if request.current_user.get("ma_vai_tro") != 1:
+        return jsonify({"message": "Chỉ ứng viên mới có quyền nộp hồ sơ."}), 403
+
+    try:
+        dto = ApplyJobDTO(**(request.get_json() or {}))
+    except ValidationError as error:
+        return _validation_error(error)
+
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        user_id = request.current_user["user_id"]
+        result = service.apply_job(user_id, tin_id, dto.ma_cv)
+        return jsonify({"data": result, "message": "Nộp hồ sơ thành công"}), 201
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
+@job_bp.route("/<int:tin_id>/applications", methods=["GET"])
+@token_required
+def get_job_applications(tin_id: int):
+    # Chỉ NTD mới được xem
+    if request.current_user.get("ma_vai_tro") != 2:
+        return jsonify({"message": "Chỉ nhà tuyển dụng mới có quyền xem danh sách ứng viên."}), 403
+
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        user_id = request.current_user["user_id"]
+        result = service.get_job_applications(user_id, tin_id)
+        return jsonify({"data": result}), 200
+    except PermissionError as e:
+        return jsonify({"message": str(e)}), 403
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
+@job_bp.route("/applications/me", methods=["GET"])
+@token_required
+def get_my_applications():
+    # Chỉ ứng viên mới được xem lịch sử của mình
+    if request.current_user.get("ma_vai_tro") != 1:
+        return jsonify({"message": "Chỉ ứng viên mới có quyền xem lịch sử hồ sơ."}), 403
+
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        user_id = request.current_user["user_id"]
+        result = service.get_my_applications(user_id)
+        return jsonify({"data": result}), 200
+    except Exception as e:
+        return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
+    finally:
+        db_session.close()
+
+
+@job_bp.route("/applications/<int:ma_ho_so>/status", methods=["PUT"])
+@token_required
+def update_application_status(ma_ho_so: int):
+    # Chỉ NTD mới được cập nhật
+    if request.current_user.get("ma_vai_tro") != 2:
+        return jsonify({"message": "Chỉ nhà tuyển dụng mới có quyền cập nhật trạng thái hồ sơ."}), 403
+
+    try:
+        dto = UpdateAppStatusDTO(**(request.get_json() or {}))
+    except ValidationError as error:
+        return _validation_error(error)
+
+    db_session = get_db_session()
+    try:
+        service = JobService(JobRepository(db_session))
+        user_id = request.current_user["user_id"]
+        
+        success = service.update_application_status(user_id, ma_ho_so, dto.ma_trang_thai)
+        if success:
+            return jsonify({"message": "Cập nhật trạng thái thành công"}), 200
+        return jsonify({"message": "Cập nhật thất bại"}), 400
+    except LookupError as e:
+        return jsonify({"message": str(e)}), 404
+    except PermissionError as e:
+        return jsonify({"message": str(e)}), 403
     except Exception as e:
         return jsonify({"message": f"Lỗi hệ thống: {str(e)}"}), 500
     finally:

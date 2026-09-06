@@ -143,7 +143,7 @@
             const cvId = urlParams.get('id');
 
             if (!cvId || !token) {
-                alert("Không tìm thấy thông tin CV!");
+                showToast("Không tìm thấy thông tin CV.", "danger");
                 window.location.href = "/cv";
                 return;
             }
@@ -175,15 +175,15 @@
                             linkEl.style.display = 'none';
                         }
                     } else {
-                        alert("Không tìm thấy CV này trong hệ thống!");
+                        showToast("Không tìm thấy CV này trong hệ thống.", "danger");
                         window.location.href = "/cv";
                     }
                 } else {
-                    alert("Lỗi tải thông tin CV");
+                    showToast("Lỗi tải thông tin CV.", "danger");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Lỗi kết nối máy chủ");
+                showToast("Lỗi kết nối máy chủ.", "danger");
             }
         });
     </script>

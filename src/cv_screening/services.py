@@ -32,7 +32,8 @@ class JobRecommendationDTO(BaseModel):
     tieu_de: str
     ten_cong_ty: str | None = None
     dia_chi: str | None = None
-    luong: int | None = None
+    min_salary: int | None = None
+    max_salary: int | None = None
     so_nam_kinh_nghiem_yeu_cau: int | None = None
     total_score: float
     breakdown: CandidateScoreBreakdownDTO
@@ -71,11 +72,15 @@ class ScreeningService:
             "hoc_van": parsed["hoc_van"] or cv.get("hoc_van") or "",
             "kinh_nghiem_lam_viec": parsed["kinh_nghiem_lam_viec"] or cv.get("kinh_nghiem_lam_viec") or ""
         }
-        self.repository.update_cv_extracted_data(ma_cv, update_payload, parsed["matched_skill_ids"])
+        self.repository.update_cv_extracted_data(
+            ma_cv, update_payload, parsed["matched_skill_ids"],
+            so_nam_kinh_nghiem=parsed["so_nam_kinh_nghiem"]
+        )
 
+        # Cập nhật trạng thái các hồ sơ ứng tuyển dùng CV này sang 'Đã trích xuất'
         status_id = self.repository.get_status_id("Đã trích xuất", 1)
         if status_id:
-            pass
+            self.repository.update_applications_status_by_cv(ma_cv, status_id)
 
         return {
             "ma_cv": ma_cv,
@@ -98,8 +103,14 @@ class ScreeningService:
         matched_status_id = self.repository.get_status_id("Đã khớp & xếp hạng", 1)
 
         for app in applications:
-            cv_text = f"{app.get('tom_tat', '')} {app.get('kinh_nghiem_lam_viec', '')}"
-            exp_years = self.parser._extract_experience_years(cv_text)
+            # Ưu tiên so_nam_kinh_nghiem đã lưu trong DB (sau bước extract);
+            # chỉ fallback parse lại từ text nếu chưa có giá trị
+            db_exp = app.get("so_nam_kinh_nghiem")
+            if db_exp is not None and db_exp > 0:
+                exp_years = db_exp
+            else:
+                cv_text = f"{app.get('tom_tat', '')} {app.get('kinh_nghiem_lam_viec', '')}"
+                exp_years = self.parser._extract_experience_years(cv_text)
 
             cv_data = {
                 "skill_ids": app.get("skill_ids", []),
@@ -144,8 +155,14 @@ class ScreeningService:
         open_jobs = self.repository.get_open_jobs()
         scored_jobs = []
 
-        cv_text = f"{cv.get('tom_tat', '')} {cv.get('kinh_nghiem_lam_viec', '')}"
-        cv_exp = self.parser._extract_experience_years(cv_text)
+        # Ưu tiên so_nam_kinh_nghiem đã lưu trong DB (sau bước extract);
+        # chỉ fallback parse lại từ text nếu chưa có giá trị
+        db_exp = cv.get("so_nam_kinh_nghiem")
+        if db_exp is not None and db_exp > 0:
+            cv_exp = db_exp
+        else:
+            cv_text = f"{cv.get('tom_tat', '')} {cv.get('kinh_nghiem_lam_viec', '')}"
+            cv_exp = self.parser._extract_experience_years(cv_text)
 
         cv_data = {
             "skill_ids": cv.get("skill_ids", []),
@@ -162,7 +179,8 @@ class ScreeningService:
                 tieu_de=job["tieu_de"],
                 ten_cong_ty=job.get("ten_cong_ty"),
                 dia_chi=job.get("dia_chi"),
-                luong=job.get("luong"),
+                min_salary=job.get("min_salary"),
+                max_salary=job.get("max_salary"),
                 so_nam_kinh_nghiem_yeu_cau=job.get("so_nam_kinh_nghiem"),
                 total_score=score_result["total_score"],
                 breakdown=score_result["breakdown"]

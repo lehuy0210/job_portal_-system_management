@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Cổng thông tin việc làm{% endblock %}</title>
+    <meta name="description" content="JobPortal - tìm việc, quản lý tuyển dụng và xây dựng hồ sơ nghề nghiệp.">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/alert.css') }}">
     <script src="http://localhost:35729/livereload.js?snipver=1"></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar">
+    <a class="skip-link" href="#main-content">Bỏ qua đến nội dung</a>
+    <nav class="navbar" aria-label="Điều hướng chính">
         <div class="nav-logo">
             <a href="/">JobPortal</a>
         </div>
@@ -19,20 +21,35 @@
         </div>
     </nav>
 
-    <main>
+    <main id="main-content">
         {% block content %}{% endblock %}
     </main>
 
     <div id="toast-container"></div>
 
     <script>
+        // Global fetch interceptor để tự động đăng xuất khi gặp lỗi 401 (trừ khi đang ở trang login/gọi API login)
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch.apply(this, args);
+            if (response.status === 401) {
+                const requestUrl = typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : '');
+                // Bỏ qua nếu đang gọi API login hoặc đang đứng ở trang login
+                if (!requestUrl.includes('/login') && window.location.pathname !== '/login') {
+                    localStorage.clear();
+                    window.location.href = '/login';
+                }
+            }
+            return response;
+        };
+
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast-alert toast-${type}`;
 
             toast.innerHTML = `
-                <span style="flex-grow: 1;">${message}</span>
+                <span class="toast-message">${message}</span>
                 <button type="button" class="toast-close" onclick="this.parentElement.classList.remove('show'); setTimeout(() => this.parentElement.remove(), 400);">&times;</button>
             `;
 
@@ -61,6 +78,7 @@
                     menuItems = `
                         <li><a href="/thong-tin-ca-nhan">Hồ sơ cá nhân</a></li>
                         <li><a href="/cv">Quản lý CV</a></li>
+                        <li><a href="/lich-su-ung-tuyen">Lịch sử ứng tuyển</a></li>
                     `;
                 } else if (maVaiTro === "2") {
                     menuItems = `
@@ -79,7 +97,7 @@
                         </div>
                         <ul class="user-dropdown-menu">
                             ${menuItems}
-                            <li><a href="#" id="logout-btn" style="color: #dc2626 !important; border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">Đăng xuất</a></li>
+                            <li><a href="/logout" id="logout-btn" class="logout-link">Đăng xuất</a></li>
                         </ul>
                     </div>
                 `;
@@ -89,13 +107,21 @@
                     localStorage.clear();
                     window.location.href = '/login';
                 });
-            }else {
+            } else {
                 navLinks.innerHTML = `
-                    <a href="/login" class="btn btn-primary" style="margin-right: 12px;">Đăng nhập</a>
+                    <a href="/login" class="btn btn-outline">Đăng nhập</a>
                     <a href="/register" class="btn btn-primary">Đăng ký</a>
                 `;
             }
+
+            document.querySelectorAll('.nav-links a[href]').forEach(function(link) {
+                if (link.pathname === window.location.pathname) {
+                    link.setAttribute('aria-current', 'page');
+                    link.classList.add('is-active');
+                }
+            });
         });
     </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

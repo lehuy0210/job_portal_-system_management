@@ -1,6 +1,6 @@
 .cv-container {
-    max-width: 1000px;
-    margin: 40px auto;
+    max-width: 1080px;
+    margin: 56px auto 80px;
     padding: 0 20px;
 }
 
@@ -11,8 +11,15 @@
     margin-bottom: 25px;
 }
 
+.cv-header-actions {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+}
+
 .cv-header h2 {
-    font-size: 1.75rem;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--text-main, #1e293b);
 }
@@ -21,10 +28,10 @@
     display: none;
     background: #ffffff;
     padding: 25px;
-    border-radius: 8px;
+    border-radius: 14px;
     margin-bottom: 30px;
-    border: 1px solid #dee2e6;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
 }
 
 /* Ép cấu trúc form theo cột dọc */
@@ -47,7 +54,7 @@
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border-radius: 14px;
     outline: none;
     background-color: #ffffff;
     color: var(--text-main, #1e293b);
@@ -81,16 +88,16 @@ textarea.form-control {
     background: #ffffff;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    border: 1px solid #dee2e6;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
 }
 
 .cv-table th {
-    background-color: #f1f3f5;
+    background-color: #edf3ef;
     padding: 15px;
     font-weight: 600;
     color: #495057;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .cv-table td {
@@ -101,7 +108,7 @@ textarea.form-control {
 }
 
 .cv-table tr:hover {
-    background-color: #f8f9fa;
+    background-color: #f5faf6;
 }
 
 .cv-actions {
@@ -129,4 +136,27 @@ textarea.form-control {
 .btn-danger-outline:hover {
     background: #dc3545;
     color: #fff;
+}
+
+@media (max-width: 700px) {
+    .cv-header {
+        align-items: flex-start;
+        gap: 1rem;
+        flex-direction: column;
+    }
+
+    .cv-header .btn {
+        width: 100%;
+    }
+
+    .cv-header-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .cv-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
 }

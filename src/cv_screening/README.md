@@ -110,7 +110,8 @@ Dùng cho Ứng viên xem danh sách các tin tuyển dụng đang mở (`Đang 
         "tieu_de": "Lập trình viên Python Senior",
         "ten_cong_ty": "VinaTech Corp",
         "dia_chi": "Cầu Giấy, Hà Nội",
-        "luong": 28000000,
+        "min_salary": 20000000,
+        "max_salary": 28000000,
         "so_nam_kinh_nghiem_yeu_cau": 3,
         "total_score": 85.4,
         "breakdown": {

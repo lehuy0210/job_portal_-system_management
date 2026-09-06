@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Sàng lọc CV - JobPortal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cv-screening.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="screening-page">
+    <header class="screening-hero">
+        <p class="eyebrow">Matching workspace</p>
+        <h1>Sàng lọc CV bằng dữ liệu phù hợp</h1>
+        <p>Đối chiếu kỹ năng, kinh nghiệm và mức độ tương đồng để tìm đúng cơ hội hoặc ứng viên.</p>
+    </header>
+
+    <div id="recruiter-view" class="screening-view" hidden>
+        <section class="screening-panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Dành cho nhà tuyển dụng</p>
+                    <h2>Xếp hạng ứng viên theo tin tuyển dụng</h2>
+                </div>
+                <span class="panel-note">Skill 50% · Kinh nghiệm 30% · Ngữ nghĩa 20%</span>
+            </div>
+            <div class="screening-toolbar">
+                <label for="screening-job">Chọn tin tuyển dụng</label>
+                <select id="screening-job">
+                    <option value="">Đang tải tin tuyển dụng...</option>
+                </select>
+                <button class="btn btn-primary" id="screen-candidates-btn" type="button">Phân tích ứng viên</button>
+            </div>
+        </section>
+
+        <section id="candidate-results" class="screening-results" aria-live="polite">
+            <div class="screening-placeholder">Chọn một tin tuyển dụng để xem bảng xếp hạng ứng viên.</div>
+        </section>
+    </div>
+
+    <div id="candidate-view" class="screening-view" hidden>
+        <section class="screening-panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Dành cho ứng viên</p>
+                    <h2>Tìm việc hợp với CV của bạn</h2>
+                </div>
+                <a class="text-link" href="/cv">Quản lý CV →</a>
+            </div>
+            <div class="screening-toolbar">
+                <label for="screening-cv">Chọn CV</label>
+                <select id="screening-cv">
+                    <option value="">Đang tải CV...</option>
+                </select>
+                <button class="btn btn-primary" id="recommend-jobs-btn" type="button">Gợi ý việc làm</button>
+                <button class="btn btn-outline" id="extract-cv-btn" type="button">Trích xuất lại</button>
+            </div>
+            <textarea id="raw-cv-text" class="extract-input" rows="4" placeholder="Tùy chọn: dán nội dung CV để hệ thống bóc tách kỹ năng, học vấn và kinh nghiệm..."></textarea>
+        </section>
+
+        <section id="recommendation-results" class="screening-results" aria-live="polite">
+            <div class="screening-placeholder">Chọn CV để nhận các tin tuyển dụng phù hợp nhất.</div>
+        </section>
+    </div>
+</section>
+
+<script>
+    const screeningToken = localStorage.getItem('access_token');
+    const screeningRole = localStorage.getItem('ma_vai_tro');
+    const authHeaders = () => ({
+        'Content-Type': 'application/json',
+        ...(screeningToken ? { 'Authorization': `Bearer ${screeningToken}` } : {})
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!screeningToken) {
+            showToast('Vui lòng đăng nhập để sử dụng sàng lọc CV.', 'danger');
+            window.location.href = '/login';
+            return;
+        }
+
+        if (screeningRole === '2') {
+            document.getElementById('recruiter-view').hidden = false;
+            loadRecruiterJobs();
+        } else if (screeningRole === '1') {
+            document.getElementById('candidate-view').hidden = false;
+            loadCandidateCvs();
+        } else {
+            showToast('Tài khoản hiện tại chưa được cấp quyền dùng tính năng này.', 'danger');
+            window.location.href = '/';
+        }
+    });
+
+    async function parseResponse(response) {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || payload.error?.message || 'Không thể tải dữ liệu.');
+        return payload.data || {};
+    }
+
+    async function loadRecruiterJobs() {
+        const select = document.getElementById('screening-job');
+        try {
+            const response = await fetch('/api/v1/jobs/search', { headers: authHeaders() });
+            const result = await parseResponse(response);
+            const jobs = Array.isArray(result) ? result : [];
+            select.innerHTML = jobs.length
+                ? jobs.map(job => `<option value="${job.tin_id}">#${job.tin_id} · ${job.tieu_de}</option>`).join('')
+                : '<option value="">Chưa có tin tuyển dụng</option>';
+        } catch (error) {
+            select.innerHTML = '<option value="">Không thể tải tin tuyển dụng</option>';
+            showToast(error.message, 'danger');
+        }
+    }
+
+    async function loadCandidateCvs() {
+        const select = document.getElementById('screening-cv');
+        try {
+            const response = await fetch('/api/v1/cv/ung-vien', { headers: authHeaders() });
+            const result = await parseResponse(response);
+            const cvs = Array.isArray(result) ? result : [];
+            select.innerHTML = cvs.length
+                ? cvs.map(cv => `<option value="${cv.ma_cv}">CV #${cv.ma_cv} · ${(cv.tom_tat || 'Chưa có tóm tắt').slice(0, 55)}</option>`).join('')
+                : '<option value="">Bạn chưa có CV</option>';
+        } catch (error) {
+            select.innerHTML = '<option value="">Không thể tải CV</option>';
+            showToast(error.message, 'danger');
+        }
+    }
+
+    document.getElementById('screen-candidates-btn').addEventListener('click', async () => {
+        const jobId = document.getElementById('screening-job').value;
+        if (!jobId) return;
+        setLoading('candidate-results', 'Đang phân tích hồ sơ ứng viên...');
+        try {
+            const response = await fetch(`/api/v1/screening/jobs/${jobId}/candidates`, { headers: authHeaders() });
+            const result = await parseResponse(response);
+            renderCandidates(result);
+        } catch (error) {
+            renderError('candidate-results', error.message);
+        }
+    });
+
+    document.getElementById('recommend-jobs-btn').addEventListener('click', loadRecommendations);
+
+    async function loadRecommendations() {
+        const cvId = document.getElementById('screening-cv').value;
+        if (!cvId) return;
+        setLoading('recommendation-results', 'Đang tìm các tin tuyển dụng phù hợp...');
+        try {
+            const response = await fetch(`/api/v1/screening/candidates/${cvId}/recommended-jobs?top_n=8`, { headers: authHeaders() });
+            const result = await parseResponse(response);
+            renderRecommendations(result);
+        } catch (error) {
+            renderError('recommendation-results', error.message);
+        }
+    }
+
+    document.getElementById('extract-cv-btn').addEventListener('click', async () => {
+        const cvId = document.getElementById('screening-cv').value;
+        if (!cvId) return;
+        const rawText = document.getElementById('raw-cv-text').value.trim();
+        setLoading('recommendation-results', 'Đang trích xuất thông tin từ CV...');
+        try {
+            const response = await fetch(`/api/v1/screening/extract/${cvId}`, {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify(rawText ? { raw_text: rawText } : {})
+            });
+            const result = await parseResponse(response);
+            const extracted = result.extracted_data || {};
+            document.getElementById('raw-cv-text').value = [
+                extracted.tom_tat, extracted.hoc_van, extracted.kinh_nghiem_lam_viec
+            ].filter(Boolean).join('\n\n');
+            showToast(`Đã trích xuất ${extracted.matched_skills?.length || 0} kỹ năng.`, 'success');
+            loadRecommendations();
+        } catch (error) {
+            renderError('recommendation-results', error.message);
+        }
+    });
+
+    function renderCandidates(data) {
+        const candidates = data.candidates || [];
+        document.getElementById('candidate-results').innerHTML = candidates.length
+            ? `<div class="results-heading"><div><p class="eyebrow">Kết quả phân tích</p><h2>${data.tieu_de}</h2></div><strong>${data.total_candidates} ứng viên</strong></div>
+                <div class="candidate-list">${candidates.map(candidate => `
+                    <article class="candidate-card">
+                        <div class="candidate-rank">${Math.round(candidate.total_score)}<small>%</small></div>
+                        <div class="candidate-info"><h3>${candidate.ho_ten}</h3><p>${candidate.email}${candidate.so_dien_thoai ? ` · ${candidate.so_dien_thoai}` : ''}</p><span>${candidate.so_nam_kinh_nghiem} năm kinh nghiệm · CV #${candidate.ma_cv}</span></div>
+                        <div class="score-breakdown"><span>Kỹ năng <b>${Math.round(candidate.breakdown.skill_score)}%</b></span><span>Kinh nghiệm <b>${Math.round(candidate.breakdown.experience_score)}%</b></span><span>Ngữ nghĩa <b>${Math.round(candidate.breakdown.semantic_score)}%</b></span></div>
+                    </article>`).join('')}</div>`
+            : '<div class="screening-placeholder">Chưa có ứng viên cho tin này.</div>';
+    }
+
+    function renderRecommendations(data) {
+        const jobs = data.recommended_jobs || [];
+        document.getElementById('recommendation-results').innerHTML = jobs.length
+            ? `<div class="results-heading"><div><p class="eyebrow">Gợi ý cá nhân hóa</p><h2>Những tin nên xem trước</h2></div><strong>${data.total_matches} tin đang mở</strong></div>
+                <div class="recommendation-grid">${jobs.map(job => `
+                    <article class="recommendation-card"><div class="recommendation-score">${Math.round(job.total_score)}% phù hợp</div><h3>${job.tieu_de}</h3><p>${job.ten_cong_ty || 'Nhà tuyển dụng'} · ${job.dia_chi || 'Địa điểm linh hoạt'}</p><div class="recommendation-meta">${job.luong ? `${Number(job.luong).toLocaleString('vi-VN')} đ` : 'Lương thỏa thuận'} · ${job.so_nam_kinh_nghiem_yeu_cau ?? 0} năm kinh nghiệm</div><div class="score-breakdown"><span>Kỹ năng <b>${Math.round(job.breakdown.skill_score)}%</b></span><span>Kinh nghiệm <b>${Math.round(job.breakdown.experience_score)}%</b></span></div></article>`).join('')}</div>`
+            : '<div class="screening-placeholder">Chưa tìm thấy tin phù hợp. Hãy cập nhật CV và thử lại.</div>';
+    }
+
+    function setLoading(id, message) {
+        document.getElementById(id).innerHTML = `<div class="screening-placeholder is-loading">${message}</div>`;
+    }
+
+    function renderError(id, message) {
+        document.getElementById(id).innerHTML = `<div class="screening-placeholder error-state" role="alert">${message}</div>`;
+    }
+</script>
+{% endblock %}
