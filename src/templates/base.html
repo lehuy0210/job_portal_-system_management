@@ -28,6 +28,21 @@
     <div id="toast-container"></div>
 
     <script>
+        // Global fetch interceptor để tự động đăng xuất khi gặp lỗi 401 (trừ khi đang ở trang login/gọi API login)
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch.apply(this, args);
+            if (response.status === 401) {
+                const requestUrl = typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : '');
+                // Bỏ qua nếu đang gọi API login hoặc đang đứng ở trang login
+                if (!requestUrl.includes('/login') && window.location.pathname !== '/login') {
+                    localStorage.clear();
+                    window.location.href = '/login';
+                }
+            }
+            return response;
+        };
+
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
