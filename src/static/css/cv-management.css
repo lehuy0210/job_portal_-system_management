@@ -11,6 +11,12 @@
     margin-bottom: 25px;
 }
 
+.cv-header-actions {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+}
+
 .cv-header h2 {
     font-family: 'Space Grotesk', sans-serif;
     font-size: 2rem;
@@ -141,6 +147,11 @@ textarea.form-control {
 
     .cv-header .btn {
         width: 100%;
+    }
+
+    .cv-header-actions {
+        width: 100%;
+        flex-direction: column;
     }
 
     .cv-table {

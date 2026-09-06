@@ -11,6 +11,13 @@
     margin-bottom: 25px;
 }
 
+.job-header-actions,
+.cv-header-actions {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+}
+
 .job-header h2 {
     font-family: 'Space Grotesk', sans-serif;
     font-size: 2rem;
@@ -147,6 +154,11 @@ textarea.form-control {
 
     .job-header .btn {
         width: 100%;
+    }
+
+    .job-header-actions {
+        width: 100%;
+        flex-direction: column;
     }
 
     .job-table {

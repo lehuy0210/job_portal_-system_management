@@ -69,6 +69,11 @@ def job_management_page():
     return render_template("job-management.html")
 
 
+@app.route("/screening")
+def screening_page():
+    return render_template("cv-screening.html")
+
+
 @app.route("/admin")
 def admin_page():
     return render_template("admin.html")
