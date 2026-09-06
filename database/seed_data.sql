@@ -18,14 +18,14 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. NGUOI_DUNG
 --    admin (id=1) đã có sẵn trong schema
 --    Thêm: NTD (id=2,3), ứng viên (id=4,5,6)
---    Hash bcrypt dưới đây tương ứng password: admin123
+--    Hash bcrypt dưới đây tương ứng password: 123456
 -- -----------------------------------------------------------------
 INSERT INTO nguoi_dung (username, password, ma_vai_tro) VALUES
-  ('congty_tech',  '$2b$12$hEOLfsnzYuyx0o79mSg6WOqqSLic5w62bbz55J0ZcRQbMjLDf73du', 2),
-  ('congty_edu',   '$2b$12$hEOLfsnzYuyx0o79mSg6WOqqSLic5w62bbz55J0ZcRQbMjLDf73du', 2),
-  ('nguyen_van_a', '$2b$12$hEOLfsnzYuyx0o79mSg6WOqqSLic5w62bbz55J0ZcRQbMjLDf73du', 1),
-  ('tran_thi_b',   '$2b$12$hEOLfsnzYuyx0o79mSg6WOqqSLic5w62bbz55J0ZcRQbMjLDf73du', 1),
-  ('le_van_c',     '$2b$12$hEOLfsnzYuyx0o79mSg6WOqqSLic5w62bbz55J0ZcRQbMjLDf73du', 1);
+  ('congty_tech',  '$2b$12$PLivgqcIUcbrZfEEPI4xL.IWDeNO/f6gauvkwXPMGMnfIPaHlT6J.', 2),
+  ('congty_edu',   '$2b$12$PLivgqcIUcbrZfEEPI4xL.IWDeNO/f6gauvkwXPMGMnfIPaHlT6J.', 2),
+  ('nguyen_van_a', '$2b$12$PLivgqcIUcbrZfEEPI4xL.IWDeNO/f6gauvkwXPMGMnfIPaHlT6J.', 1),
+  ('tran_thi_b',   '$2b$12$PLivgqcIUcbrZfEEPI4xL.IWDeNO/f6gauvkwXPMGMnfIPaHlT6J.', 1),
+  ('le_van_c',     '$2b$12$PLivgqcIUcbrZfEEPI4xL.IWDeNO/f6gauvkwXPMGMnfIPaHlT6J.', 1);
 
 -- -----------------------------------------------------------------
 -- 2. NHÀ TUYỂN DỤNG
