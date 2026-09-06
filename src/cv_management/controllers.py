@@ -50,35 +50,44 @@ from flask import current_app
 @cv_bp.route("/", methods=["POST"])
 @token_required
 def create_cv():
-    if "cv_file" not in request.files:
-        return jsonify({"message": "Thiếu file CV"}), 400
+    if request.is_json:
+        # User input text manually
+        payload = request.get_json() or {}
+        try:
+            dto = CVCreateDTO(**payload)
+        except ValidationError as error:
+            return _validation_error(error)
+    else:
+        # User uploaded a file
+        if "cv_file" not in request.files:
+            return jsonify({"message": "Thiếu file CV"}), 400
+            
+        file = request.files["cv_file"]
+        if file.filename == "":
+            return jsonify({"message": "Chưa chọn file"}), 400
+
+        try:
+            dto = CVCreateDTO(
+                tom_tat=request.form.get("tom_tat", ""),
+                duong_dan="temp",
+                source="Upload",
+                hoc_van=request.form.get("hoc_van", ""),
+                kinh_nghiem_lam_viec=request.form.get("kinh_nghiem", "")
+            )
+        except ValidationError as error:
+            return _validation_error(error)
+
+        # Lưu file vào static/uploads/cv/
+        filename = secure_filename(file.filename)
+        filename = f"{int(time.time())}_{filename}"
+        upload_folder = os.path.join(current_app.root_path, "static", "uploads", "cv")
+        os.makedirs(upload_folder, exist_ok=True)
         
-    file = request.files["cv_file"]
-    if file.filename == "":
-        return jsonify({"message": "Chưa chọn file"}), 400
-
-    try:
-        dto = CVCreateDTO(
-            tom_tat=request.form.get("tom_tat", ""),
-            duong_dan="temp",
-            source="Upload",
-            hoc_van=request.form.get("hoc_van", ""),
-            kinh_nghiem_lam_viec=request.form.get("kinh_nghiem", "")
-        )
-    except ValidationError as error:
-        return _validation_error(error)
-
-    # Lưu file vào static/uploads/cv/
-    filename = secure_filename(file.filename)
-    filename = f"{int(time.time())}_{filename}"
-    upload_folder = os.path.join(current_app.root_path, "static", "uploads", "cv")
-    os.makedirs(upload_folder, exist_ok=True)
-    
-    file_path = os.path.join(upload_folder, filename)
-    file.save(file_path)
-    
-    # Cập nhật đường dẫn
-    dto.duong_dan = f"/static/uploads/cv/{filename}"
+        file_path = os.path.join(upload_folder, filename)
+        file.save(file_path)
+        
+        # Cập nhật đường dẫn
+        dto.duong_dan = f"/static/uploads/cv/{filename}"
 
     db_session = get_db_session()
     try:
