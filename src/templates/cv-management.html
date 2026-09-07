@@ -37,7 +37,11 @@
 
             <div class="form-group" id="file-group">
                 <label>File CV (PDF/DOCX) <span style="color:red">*</span></label>
-                <input type="file" id="cv_file" name="cv_file" class="form-control" accept=".pdf,.doc,.docx" required>
+                <input type="file" id="cv_file" name="cv_file" class="form-control" accept=".pdf,.doc,.docx" required onchange="onFileSelected(this)">
+                <div id="parse-status" style="display:none; margin-top: 8px; font-size: 0.85rem; color: #5c6ac4; display: flex; align-items: center; gap: 8px;">
+                    <span id="parse-spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #5c6ac4; border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite;"></span>
+                    <span id="parse-msg">Đang đọc nội dung file...</span>
+                </div>
             </div>
 
             <div id="text-fields-group">
@@ -117,16 +121,77 @@
         if (method === 'upload') {
             document.getElementById('file-group').style.display = 'block';
             document.getElementById('cv_file').required = true;
+            // Khi upload, hiện textarea nhưng không bắt buộc (sẽ được auto-fill)
+            document.getElementById('text-fields-group').style.display = 'block';
             document.getElementById('tom_tat').required = false;
             document.getElementById('hoc_van').required = false;
             document.getElementById('kinh_nghiem').required = false;
+            // Reset parse status
+            setParseStatus('hidden');
         } else {
             document.getElementById('file-group').style.display = 'none';
             document.getElementById('cv_file').required = false;
             document.getElementById('cv_file').value = '';
+            document.getElementById('text-fields-group').style.display = 'block';
             document.getElementById('tom_tat').required = true;
             document.getElementById('hoc_van').required = true;
             document.getElementById('kinh_nghiem').required = true;
+        }
+    }
+
+    function setParseStatus(state, msg) {
+        const el = document.getElementById('parse-status');
+        const spinner = document.getElementById('parse-spinner');
+        const msgEl = document.getElementById('parse-msg');
+        if (state === 'hidden') {
+            el.style.display = 'none';
+        } else if (state === 'loading') {
+            el.style.display = 'flex';
+            el.style.color = '#5c6ac4';
+            spinner.style.display = 'inline-block';
+            msgEl.textContent = msg || 'Đang đọc nội dung file...';
+        } else if (state === 'success') {
+            el.style.display = 'flex';
+            el.style.color = '#28a745';
+            spinner.style.display = 'none';
+            msgEl.textContent = msg || '✅ Đọc file thành công! Hãy kiểm tra và chỉnh sửa nội dung bên dưới.';
+        } else if (state === 'error') {
+            el.style.display = 'flex';
+            el.style.color = '#dc3545';
+            spinner.style.display = 'none';
+            msgEl.textContent = msg || '❌ Không đọc được file.';
+        }
+    }
+
+    window.onFileSelected = async function(input) {
+        const method = document.querySelector('input[name="cv_method"]:checked').value;
+        if (method !== 'upload' || !input.files || input.files.length === 0) return;
+
+        setParseStatus('loading', 'Đang đọc nội dung file CV...');
+
+        const formData = new FormData();
+        formData.append('cv_file', input.files[0]);
+
+        try {
+            const res = await fetch('/api/v1/cv/parse', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+                body: formData
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                setParseStatus('error', '❌ ' + (err.message || 'Không đọc được file.'));
+                return;
+            }
+
+            const data = await res.json();
+            document.getElementById('tom_tat').value = data.tom_tat || '';
+            document.getElementById('hoc_van').value = data.hoc_van || '';
+            document.getElementById('kinh_nghiem').value = data.kinh_nghiem || '';
+            setParseStatus('success', '✅ Đọc file thành công! Hãy kiểm tra và chỉnh sửa nội dung bên dưới nếu cần.');
+        } catch (err) {
+            setParseStatus('error', '❌ Lỗi kết nối khi phân tích file.');
         }
     }
 
