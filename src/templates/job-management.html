@@ -16,53 +16,6 @@
         cursor: pointer;
         transition: all 0.2s;
     }
-
-    async function loadApplications(tinId, title) {
-        const panel = document.getElementById('applications-panel');
-        const body = document.getElementById('applications-body');
-        document.getElementById('applications-title').textContent = `Hồ sơ ứng tuyển · ${title}`;
-        panel.hidden = false;
-        body.innerHTML = '<tr><td colspan="5">Đang tải hồ sơ...</td></tr>';
-        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        try {
-            const response = await fetch(`/api/v1/jobs/${tinId}/applications`, { headers: getAuthHeaders() });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Không thể tải hồ sơ.');
-            const applications = result.data || [];
-            body.innerHTML = applications.length ? applications.map(application => `
-                <tr>
-                    <td><strong>${application.ho_ten || 'Chưa cập nhật'}</strong><small>${application.email || ''}</small></td>
-                    <td>${application.ngay_nop || '-'}</td>
-                    <td>CV #${application.ma_cv}</td>
-                    <td><span class="application-status">${application.ten_trang_thai || 'Mới nộp'}</span></td>
-                    <td>
-                        <select class="status-select" onchange="updateApplicationStatus(${application.ma_ho_so}, this)">
-                            <option value="1" ${application.ma_trang_thai === 1 ? 'selected' : ''}>Mới nộp</option>
-                            <option value="4" ${application.ma_trang_thai === 4 ? 'selected' : ''}>Phỏng vấn</option>
-                            <option value="5" ${application.ma_trang_thai === 5 ? 'selected' : ''}>Trúng tuyển</option>
-                            <option value="6" ${application.ma_trang_thai === 6 ? 'selected' : ''}>Từ chối</option>
-                        </select>
-                    </td>
-                </tr>`).join('') : '<tr><td colspan="5">Chưa có hồ sơ ứng tuyển.</td></tr>';
-        } catch (error) {
-            body.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
-        }
-    }
-
-    async function updateApplicationStatus(applicationId, select) {
-        try {
-            const response = await fetch(`/api/v1/jobs/applications/${applicationId}/status`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ ma_trang_thai: Number(select.value) })
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Cập nhật thất bại.');
-            showToast(result.message || 'Cập nhật trạng thái thành công.', 'success');
-        } catch (error) {
-            showToast(error.message, 'danger');
-        }
-    }
     .status-select:focus {
         border-color: #2563eb;
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
