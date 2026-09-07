@@ -54,27 +54,47 @@ class ScreeningService:
         req_file_path = data.file_path if data else file_path
 
         text_content = ""
+        is_fallback = False
+        
         if req_raw_text and req_raw_text.strip():
             text_content = req_raw_text.strip()
         else:
             target_path = req_file_path or cv.get("duong_dan")
-            if target_path and os.path.exists(target_path):
-                text_content = self.extractor.extract_text(target_path)
+            
+            # Convert web path to local path for extraction
+            local_path = target_path
+            if target_path and target_path.startswith("/static/"):
+                from flask import current_app
+                local_path = os.path.join(current_app.root_path, target_path.lstrip("/"))
+                
+            if local_path and os.path.exists(local_path):
+                text_content = self.extractor.extract_text(local_path)
             else:
                 existing_parts = [cv.get("tom_tat") or "", cv.get("hoc_van") or "", cv.get("kinh_nghiem_lam_viec") or ""]
                 text_content = " ".join([p for p in existing_parts if p.strip()])
+                is_fallback = True
 
         all_skills = self.repository.get_all_skills()
         parsed = self.parser.parse_cv_text(text_content, all_skills)
 
-        update_payload = {
-            "tom_tat": parsed["tom_tat"] or cv.get("tom_tat") or "",
-            "hoc_van": parsed["hoc_van"] or cv.get("hoc_van") or "",
-            "kinh_nghiem_lam_viec": parsed["kinh_nghiem_lam_viec"] or cv.get("kinh_nghiem_lam_viec") or ""
-        }
+        if is_fallback:
+            update_payload = {
+                "tom_tat": cv.get("tom_tat") or "",
+                "hoc_van": cv.get("hoc_van") or "",
+                "kinh_nghiem_lam_viec": cv.get("kinh_nghiem_lam_viec") or ""
+            }
+            final_exp = parsed["so_nam_kinh_nghiem"] if parsed["so_nam_kinh_nghiem"] else cv.get("so_nam_kinh_nghiem")
+        else:
+            update_payload = {
+                "tom_tat": parsed["tom_tat"] or cv.get("tom_tat") or "",
+                "hoc_van": parsed["hoc_van"] or cv.get("hoc_van") or "",
+                "kinh_nghiem_lam_viec": parsed["kinh_nghiem_lam_viec"] or cv.get("kinh_nghiem_lam_viec") or ""
+            }
+            final_exp = parsed["so_nam_kinh_nghiem"]
+
         self.repository.update_cv_extracted_data(
             ma_cv, update_payload, parsed["matched_skill_ids"],
-            so_nam_kinh_nghiem=parsed["so_nam_kinh_nghiem"]
+            so_nam_kinh_nghiem=final_exp
         )
 
         # Cập nhật trạng thái các hồ sơ ứng tuyển dùng CV này sang 'Đã trích xuất'
@@ -101,23 +121,33 @@ class ScreeningService:
         ranked_candidates = []
 
         matched_status_id = self.repository.get_status_id("Đã khớp & xếp hạng", 1)
+        all_skills = self.repository.get_all_skills()
 
         for app in applications:
-            # Ưu tiên so_nam_kinh_nghiem đã lưu trong DB (sau bước extract);
-            # chỉ fallback parse lại từ text nếu chưa có giá trị
             db_exp = app.get("so_nam_kinh_nghiem")
-            if db_exp is not None and db_exp > 0:
-                exp_years = db_exp
+            skill_ids = app.get("skill_ids", [])
+
+            # Nếu DB chưa lưu số năm kinh nghiệm hoặc chưa có kỹ năng, ta parse lại từ text
+            if (db_exp is None or db_exp == 0) or not skill_ids:
+                cv_text = f"{app.get('tom_tat') or ''} {app.get('kinh_nghiem_lam_viec') or ''}"
+                parsed = self.parser.parse_cv_text(cv_text, all_skills)
+                
+                if db_exp is None or db_exp == 0:
+                    exp_years = parsed["so_nam_kinh_nghiem"]
+                else:
+                    exp_years = db_exp
+                    
+                if not skill_ids:
+                    skill_ids = parsed["matched_skill_ids"]
             else:
-                cv_text = f"{app.get('tom_tat', '')} {app.get('kinh_nghiem_lam_viec', '')}"
-                exp_years = self.parser._extract_experience_years(cv_text)
+                exp_years = db_exp
 
             cv_data = {
-                "skill_ids": app.get("skill_ids", []),
+                "skill_ids": skill_ids,
                 "so_nam_kinh_nghiem": exp_years,
-                "tom_tat": app.get("tom_tat", ""),
-                "hoc_van": app.get("hoc_van", ""),
-                "kinh_nghiem_lam_viec": app.get("kinh_nghiem_lam_viec", "")
+                "tom_tat": app.get("tom_tat") or "",
+                "hoc_van": app.get("hoc_van") or "",
+                "kinh_nghiem_lam_viec": app.get("kinh_nghiem_lam_viec") or ""
             }
 
             score_result = self.scorer.calculate_score(cv_data, job)
@@ -154,22 +184,32 @@ class ScreeningService:
 
         open_jobs = self.repository.get_open_jobs()
         scored_jobs = []
+        all_skills = self.repository.get_all_skills()
 
-        # Ưu tiên so_nam_kinh_nghiem đã lưu trong DB (sau bước extract);
-        # chỉ fallback parse lại từ text nếu chưa có giá trị
         db_exp = cv.get("so_nam_kinh_nghiem")
-        if db_exp is not None and db_exp > 0:
-            cv_exp = db_exp
+        skill_ids = cv.get("skill_ids", [])
+
+        # Fallback parse lại kỹ năng và kinh nghiệm nếu DB chưa có
+        if (db_exp is None or db_exp == 0) or not skill_ids:
+            cv_text = f"{cv.get('tom_tat') or ''} {cv.get('kinh_nghiem_lam_viec') or ''}"
+            parsed = self.parser.parse_cv_text(cv_text, all_skills)
+            
+            if db_exp is None or db_exp == 0:
+                cv_exp = parsed["so_nam_kinh_nghiem"]
+            else:
+                cv_exp = db_exp
+                
+            if not skill_ids:
+                skill_ids = parsed["matched_skill_ids"]
         else:
-            cv_text = f"{cv.get('tom_tat', '')} {cv.get('kinh_nghiem_lam_viec', '')}"
-            cv_exp = self.parser._extract_experience_years(cv_text)
+            cv_exp = db_exp
 
         cv_data = {
-            "skill_ids": cv.get("skill_ids", []),
+            "skill_ids": skill_ids,
             "so_nam_kinh_nghiem": cv_exp,
-            "tom_tat": cv.get("tom_tat", ""),
-            "hoc_van": cv.get("hoc_van", ""),
-            "kinh_nghiem_lam_viec": cv.get("kinh_nghiem_lam_viec", "")
+            "tom_tat": cv.get("tom_tat") or "",
+            "hoc_van": cv.get("hoc_van") or "",
+            "kinh_nghiem_lam_viec": cv.get("kinh_nghiem_lam_viec") or ""
         }
 
         for job in open_jobs:

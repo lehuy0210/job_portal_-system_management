@@ -160,3 +160,5 @@ textarea.form-control {
         white-space: nowrap;
     }
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -94,7 +94,6 @@ class JobRepository:
             FROM tin_tuyen_dung t
             JOIN nha_tuyen_dung n ON t.ma_nha_tuyen_dung = n.ma_nha_tuyen_dung
             LEFT JOIN cong_ty c ON n.ma_nha_tuyen_dung = c.ma_nha_tuyen_dung
-            LEFT JOIN tin_tuyen_dung_ky_nang tk ON t.tin_id = tk.tin_id
             WHERE 1=1
         """
         params = {}
@@ -112,20 +111,18 @@ class JobRepository:
             params["dia_chi"] = f"%{filters['dia_chi']}%"
 
         if filters.get("min_experience") is not None:
-            base_query += " AND t.so_nam_kinh_nghiem >= :min_experience"
+            base_query += " AND (t.so_nam_kinh_nghiem >= :min_experience OR t.so_nam_kinh_nghiem IS NULL)"
             params["min_experience"] = filters["min_experience"]
         if filters.get("max_experience") is not None:
-            base_query += " AND t.so_nam_kinh_nghiem <= :max_experience"
+            base_query += " AND (t.so_nam_kinh_nghiem <= :max_experience OR t.so_nam_kinh_nghiem IS NULL)"
             params["max_experience"] = filters["max_experience"]
 
-        # Loc luong: tim tin co luong nam trong khoang user chon
-        # min_salary filter: chi lay tin co luong toi da >= muc toi thieu user chon
+        # Loc luong: tim tin co luong nam trong khoang user chon, hoac luong thoa thuan (NULL)
         if filters.get("min_salary") is not None:
-            base_query += " AND t.max_salary >= :min_salary"
+            base_query += " AND (t.max_salary >= :min_salary OR t.max_salary IS NULL)"
             params["min_salary"] = filters["min_salary"]
-        # max_salary filter: chi lay tin co luong toi thieu <= muc toi da user chon
         if filters.get("max_salary") is not None:
-            base_query += " AND t.min_salary <= :max_salary"
+            base_query += " AND (t.min_salary <= :max_salary OR t.min_salary IS NULL)"
             params["max_salary"] = filters["max_salary"]
 
         if filters.get("skill_ids"):
@@ -135,7 +132,15 @@ class JobRepository:
                 key = f"skill_id_{i}"
                 placeholders.append(f":{key}")
                 params[key] = sid
-            base_query += f" AND tk.ma_ky_nang IN ({', '.join(placeholders)})"
+            # Logic AND: Job phai co tat ca cac skill duoc chon
+            base_query += f""" 
+                AND t.tin_id IN (
+                    SELECT tin_id FROM tin_tuyen_dung_ky_nang 
+                    WHERE ma_ky_nang IN ({', '.join(placeholders)})
+                    GROUP BY tin_id
+                    HAVING COUNT(DISTINCT ma_ky_nang) = {len(skill_ids)}
+                )
+            """
 
         base_query += " ORDER BY t.tin_id DESC"
 
