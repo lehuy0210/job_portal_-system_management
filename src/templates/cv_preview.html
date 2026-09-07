@@ -133,18 +133,51 @@
     <script>
         document.addEventListener("DOMContentLoaded", async function() {
             const token = localStorage.getItem('access_token');
-            const username = localStorage.getItem('username');
-
-            if(username) {
-                document.getElementById('cv-hoten').innerText = username;
-            }
-
             const urlParams = new URLSearchParams(window.location.search);
             const cvId = urlParams.get('id');
 
-            if (!cvId || !token) {
-                alert("Không tìm thấy thông tin CV!");
-                window.location.href = "/cv";
+            if (!cvId) {
+                showToast("Không tìm thấy thông tin CV.", "danger");
+                window.location.href = "/";
+                return;
+            }
+
+            function renderCV(currentCV) {
+                document.getElementById('cv-hoten').innerText = currentCV.ho_ten || currentCV.username || localStorage.getItem('username') || 'Ẩn danh';
+                document.getElementById('cv-email').innerText = currentCV.email || '';
+                document.getElementById('cv-sdt').innerText = currentCV.so_dien_thoai || '';
+                document.getElementById('cv-diachi').innerText = currentCV.dia_chi || '';
+                
+                document.getElementById('cv-tom-tat').innerText = currentCV.tom_tat || 'Chưa cập nhật';
+                document.getElementById('cv-hoc-van').innerText = currentCV.hoc_van || 'Chưa cập nhật';
+                document.getElementById('cv-kinh-nghiem').innerText = currentCV.kinh_nghiem_lam_viec || currentCV.kinh_nghiem || 'Chưa cập nhật';
+                document.getElementById('cv-source').innerText = currentCV.source || 'JobPortal';
+
+                const linkEl = document.getElementById('cv-link');
+                if (linkEl) {
+                    if (currentCV.duong_dan) {
+                        linkEl.href = currentCV.duong_dan;
+                        linkEl.style.display = 'inline-block';
+                    } else {
+                        linkEl.style.display = 'none';
+                    }
+                }
+            }
+
+            // 1. Kiểm tra xem có dữ liệu CV được truyền qua localStorage (từ màn hình Nhà tuyển dụng) không
+            const cachedData = localStorage.getItem('preview_cv_' + cvId);
+            if (cachedData) {
+                const currentCV = JSON.parse(cachedData);
+                renderCV(currentCV);
+                // Xóa khỏi localStorage sau khi đọc xong để dọn dẹp
+                localStorage.removeItem('preview_cv_' + cvId);
+                return;
+            }
+
+            // 2. Nếu không có trong session, gọi API lấy danh sách CV (dành cho Ứng viên xem trước CV của mình)
+            if (!token) {
+                showToast("Vui lòng đăng nhập để xem CV.", "danger");
+                window.location.href = "/";
                 return;
             }
 
@@ -163,27 +196,16 @@
                     const currentCV = listCV.find(c => c.ma_cv == cvId);
 
                     if (currentCV) {
-                        document.getElementById('cv-tom-tat').innerText = currentCV.tom_tat || '';
-                        document.getElementById('cv-hoc-van').innerText = currentCV.hoc_van || '';
-                        document.getElementById('cv-kinh-nghiem').innerText = currentCV.kinh_nghiem_lam_viec || '';
-                        document.getElementById('cv-source').innerText = currentCV.source || 'Không có';
-
-                        const linkEl = document.getElementById('cv-link');
-                        if(currentCV.duong_dan) {
-                            linkEl.href = currentCV.duong_dan;
-                        } else {
-                            linkEl.style.display = 'none';
-                        }
+                        renderCV(currentCV);
                     } else {
-                        alert("Không tìm thấy CV này trong hệ thống!");
-                        window.location.href = "/cv";
+                        showToast("Không tìm thấy CV này trong hệ thống.", "danger");
                     }
                 } else {
-                    alert("Lỗi tải thông tin CV");
+                    showToast("Lỗi tải thông tin CV.", "danger");
                 }
             } catch (error) {
                 console.error(error);
-                alert("Lỗi kết nối máy chủ");
+                showToast("Lỗi kết nối máy chủ.", "danger");
             }
         });
     </script>

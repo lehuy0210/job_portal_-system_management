@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết tin tuyển dụng - JobPortal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .job-detail-container {
+        padding: 40px;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .job-header {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    .job-header h1 {
+        margin: 0 0 10px 0;
+        color: #1e293b;
+    }
+    .company-name {
+        font-size: 18px;
+        color: #475569;
+        margin-bottom: 15px;
+    }
+    .job-tags {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .job-tag {
+        background: #f1f5f9;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #334155;
+    }
+    .job-body {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .section-title {
+        font-size: 20px;
+        color: #1e293b;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        margin-top: 30px;
+    }
+    .section-title:first-child {
+        margin-top: 0;
+    }
+    .apply-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    .apply-btn:hover {
+        background: #1d4ed8;
+    }
+    .apply-btn:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+    }
+    
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 500px;
+    }
+    .modal h3 { margin-top: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="job-detail-container" id="job-content" style="display: none;">
+    <div class="job-header">
+        <div>
+            <h1 id="job-title">Tải dữ liệu...</h1>
+            <div class="company-name" id="job-company">Công ty...</div>
+            <div class="job-tags" id="job-tags">
+                <!-- Tags here -->
+            </div>
+        </div>
+        <div>
+            <button id="btn-apply" class="apply-btn" onclick="openApplyModal()">Ứng tuyển ngay</button>
+        </div>
+    </div>
+    
+    <div class="job-body">
+        <h3 class="section-title">Mô tả công việc</h3>
+        <div id="job-desc" style="white-space: pre-line; line-height: 1.6; color: #475569;">
+            <!-- Desc here -->
+        </div>
+        
+        <h3 class="section-title">Thông tin chung</h3>
+        <ul style="line-height: 2; color: #475569;">
+            <li><strong>Kinh nghiệm yêu cầu:</strong> <span id="job-exp"></span></li>
+            <li><strong>Địa điểm:</strong> <span id="job-location"></span></li>
+            <li><strong>Hạn nộp hồ sơ:</strong> <span id="job-deadline"></span></li>
+        </ul>
+        
+        <h3 class="section-title">Kỹ năng yêu cầu</h3>
+        <div class="job-tags" id="job-skills">
+            <!-- Skills here -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chọn CV -->
+<div class="modal" id="applyModal">
+    <div class="modal-content">
+        <h3>Chọn CV ứng tuyển</h3>
+        <p>Vui lòng chọn 1 CV trong danh sách CV của bạn để nộp vào vị trí này.</p>
+        <div style="margin: 20px 0;">
+            <select id="cv-select" class="form-control" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                <option value="">-- Đang tải danh sách CV --</option>
+            </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-outline" style="padding: 10px 20px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;" onclick="closeApplyModal()">Hủy</button>
+            <button class="btn btn-primary" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="submitApplication()">Xác nhận nộp</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const tinId = "{{ tin_id }}";
+
+document.addEventListener("DOMContentLoaded", async function() {
+    await fetchJobDetail();
+    
+    const role = localStorage.getItem("ma_vai_tro");
+    if (role !== "1") {
+        document.getElementById("btn-apply").style.display = "none";
+    }
+});
+
+async function fetchJobDetail() {
+    try {
+        const res = await fetch(`/api/v1/jobs/${tinId}`);
+        if (!res.ok) {
+            showToast("Không tìm thấy tin tuyển dụng.", "danger");
+            window.location.href = "/";
+            return;
+        }
+        
+        const data = await res.json();
+        const job = data.data;
+        
+        document.getElementById("job-title").innerText = job.tieu_de;
+        document.getElementById("job-company").innerText = job.ten_cong_ty || job.ten_nha_tuyen_dung;
+        
+        const salaryStr = job.min_salary && job.max_salary 
+            ? `${job.min_salary.toLocaleString()} - ${job.max_salary.toLocaleString()} VNĐ`
+            : (job.min_salary ? `Từ ${job.min_salary.toLocaleString()} VNĐ` : "Thỏa thuận");
+            
+        document.getElementById("job-tags").innerHTML = `
+            <span class="job-tag"><i class="fas fa-money-bill"></i> ${salaryStr}</span>
+            <span class="job-tag"><i class="fas fa-map-marker-alt"></i> ${job.dia_chi || 'Thỏa thuận'}</span>
+        `;
+        
+        document.getElementById("job-desc").innerText = job.mo_ta;
+        document.getElementById("job-exp").innerText = job.so_nam_kinh_nghiem ? `${job.so_nam_kinh_nghiem} năm` : "Không yêu cầu kinh nghiệm";
+        document.getElementById("job-location").innerText = job.dia_chi || "Thỏa thuận";
+        document.getElementById("job-deadline").innerText = job.han_nop || "Không có";
+        
+        if (job.ky_nangs && job.ky_nangs.length > 0) {
+            document.getElementById("job-skills").innerHTML = job.ky_nangs.map(k => `<span class="job-tag">${k.ten_ky_nang}</span>`).join('');
+        } else {
+            document.getElementById("job-skills").innerHTML = "<p>Không yêu cầu kỹ năng cụ thể</p>";
+        }
+        
+        document.getElementById("job-content").style.display = "block";
+        
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function openApplyModal() {
+    document.getElementById("applyModal").style.display = "flex";
+    const select = document.getElementById("cv-select");
+    
+    // Fetch CVs
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+    
+    try {
+        const res = await fetch("/api/v1/cv/ung-vien", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await res.json();
+        
+        select.innerHTML = "";
+        if (data.data.length === 0) {
+            select.innerHTML = '<option value="">Bạn chưa có CV nào. Vui lòng tạo CV trước.</option>';
+        } else {
+            data.data.forEach(cv => {
+                const opt = document.createElement("option");
+                opt.value = cv.ma_cv;
+                opt.innerText = `CV #${cv.ma_cv} - ${cv.tom_tat.substring(0, 30)}...`;
+                select.appendChild(opt);
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        select.innerHTML = '<option value="">Lỗi tải danh sách CV</option>';
+    }
+}
+
+function closeApplyModal() {
+    document.getElementById("applyModal").style.display = "none";
+}
+
+async function submitApplication() {
+    const cvId = document.getElementById("cv-select").value;
+    if (!cvId) {
+        showToast("Vui lòng chọn một CV hợp lệ.", "danger");
+        return;
+    }
+    
+    const token = localStorage.getItem("access_token");
+    try {
+        const res = await fetch(`/api/v1/jobs/${tinId}/apply`, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ma_cv: parseInt(cvId) })
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+            showToast("Nộp hồ sơ thành công.", "success");
+            closeApplyModal();
+            window.location.href = "/lich-su-ung-tuyen";
+        } else {
+            showToast(data.message || "Lỗi khi nộp hồ sơ.", "danger");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Có lỗi xảy ra khi nộp hồ sơ.", "danger");
+    }
+}
+</script>
+{% endblock %}

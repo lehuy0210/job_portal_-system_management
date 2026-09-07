@@ -10,7 +10,11 @@
 <div class="cv-container">
     <div class="cv-header">
         <h2>Quản lý CV của tôi</h2>
-        <button class="btn btn-primary" onclick="showForm()">+ Tạo CV mới</button>
+        <div class="cv-header-actions">
+            <a class="btn btn-outline" href="/screening">Gợi ý việc làm</a>
+            <a class="btn btn-outline" href="/lich-su-ung-tuyen">Lịch sử ứng tuyển</a>
+            <button class="btn btn-primary" onclick="showForm()">+ Tạo CV mới</button>
+        </div>
     </div>
 
     <!-- Form chỉ còn lại các trường nội dung cốt lõi -->
@@ -19,7 +23,29 @@
         <form id="cvForm">
             <input type="hidden" id="cv-id">
 
-            <div class="form-group">
+            <div class="form-group" id="creation-method-group">
+                <label>Phương thức tạo CV</label>
+                <div style="display: flex; gap: 20px; margin-top: 10px;">
+                    <label style="font-weight: normal; cursor: pointer;">
+                        <input type="radio" name="cv_method" value="upload" checked onchange="toggleCvMethod()"> Tải file lên
+                    </label>
+                    <label style="font-weight: normal; cursor: pointer;">
+                        <input type="radio" name="cv_method" value="text" onchange="toggleCvMethod()"> Nhập trực tiếp
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="file-group">
+                <label>File CV (PDF/DOCX) <span style="color:red">*</span></label>
+                <input type="file" id="cv_file" name="cv_file" class="form-control" accept=".pdf,.doc,.docx" required onchange="onFileSelected(this)">
+                <div id="parse-status" style="display:none; margin-top: 8px; font-size: 0.85rem; color: #5c6ac4; display: flex; align-items: center; gap: 8px;">
+                    <span id="parse-spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #5c6ac4; border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite;"></span>
+                    <span id="parse-msg">Đang đọc nội dung file...</span>
+                </div>
+            </div>
+
+            <div id="text-fields-group">
+                <div class="form-group">
                 <label>Tóm tắt bản thân / Mục tiêu nghề nghiệp</label>
                 <textarea id="tom_tat" class="form-control" rows="2" placeholder="Giới thiệu ngắn gọn bản thân..." required></textarea>
             </div>
@@ -31,7 +57,8 @@
 
             <div class="form-group">
                 <label>Kinh nghiệm làm việc</label>
-                <textarea id="kinh_nghiem" class="form-control" rows="3" placeholder="Mô tả các dự án hoặc kinh nghiệm làm việc..." required></textarea>
+                <textarea id="kinh_nghiem" class="form-control" rows="3" placeholder="Mô tả các dự án hoặc kinh nghiệm làm việc..."></textarea>
+            </div>
             </div>
 
             <div style="margin-top: 20px;">
@@ -61,7 +88,7 @@
     let cvListCache = [];
 
     if (!token || role !== "1") {
-        alert("Chỉ ứng viên đã đăng nhập mới có quyền truy cập trang này!");
+        showToast("Chỉ ứng viên đã đăng nhập mới có quyền truy cập trang này.", "danger");
         window.location.href = "/";
     }
 
@@ -74,15 +101,98 @@
 
     document.addEventListener("DOMContentLoaded", loadCVs);
 
-    function showForm() {
-        document.getElementById('cv-form-container').style.display = 'block';
-        document.getElementById('form-title').innerText = 'Thêm CV mới';
+    window.showForm = function() {
+        document.getElementById('cv-form-container').style.display = "block";
+        document.getElementById('form-title').innerText = "Thêm CV mới";
+        document.getElementById('cv-id').value = "";
         document.getElementById('cvForm').reset();
-        document.getElementById('cv-id').value = '';
+        
+        document.getElementById('creation-method-group').style.display = "block";
+        document.querySelector('input[name="cv_method"][value="upload"]').checked = true;
+        toggleCvMethod();
     }
 
-    function hideForm() {
-        document.getElementById('cv-form-container').style.display = 'none';
+    window.hideForm = function() {
+        document.getElementById('cv-form-container').style.display = "none";
+    }
+
+    window.toggleCvMethod = function() {
+        const method = document.querySelector('input[name="cv_method"]:checked').value;
+        if (method === 'upload') {
+            document.getElementById('file-group').style.display = 'block';
+            document.getElementById('cv_file').required = true;
+            // Khi upload, hiện textarea nhưng không bắt buộc (sẽ được auto-fill)
+            document.getElementById('text-fields-group').style.display = 'block';
+            document.getElementById('tom_tat').required = false;
+            document.getElementById('hoc_van').required = false;
+            document.getElementById('kinh_nghiem').required = false;
+            // Reset parse status
+            setParseStatus('hidden');
+        } else {
+            document.getElementById('file-group').style.display = 'none';
+            document.getElementById('cv_file').required = false;
+            document.getElementById('cv_file').value = '';
+            document.getElementById('text-fields-group').style.display = 'block';
+            document.getElementById('tom_tat').required = true;
+            document.getElementById('hoc_van').required = true;
+            document.getElementById('kinh_nghiem').required = true;
+        }
+    }
+
+    function setParseStatus(state, msg) {
+        const el = document.getElementById('parse-status');
+        const spinner = document.getElementById('parse-spinner');
+        const msgEl = document.getElementById('parse-msg');
+        if (state === 'hidden') {
+            el.style.display = 'none';
+        } else if (state === 'loading') {
+            el.style.display = 'flex';
+            el.style.color = '#5c6ac4';
+            spinner.style.display = 'inline-block';
+            msgEl.textContent = msg || 'Đang đọc nội dung file...';
+        } else if (state === 'success') {
+            el.style.display = 'flex';
+            el.style.color = '#28a745';
+            spinner.style.display = 'none';
+            msgEl.textContent = msg || '✅ Đọc file thành công! Hãy kiểm tra và chỉnh sửa nội dung bên dưới.';
+        } else if (state === 'error') {
+            el.style.display = 'flex';
+            el.style.color = '#dc3545';
+            spinner.style.display = 'none';
+            msgEl.textContent = msg || '❌ Không đọc được file.';
+        }
+    }
+
+    window.onFileSelected = async function(input) {
+        const method = document.querySelector('input[name="cv_method"]:checked').value;
+        if (method !== 'upload' || !input.files || input.files.length === 0) return;
+
+        setParseStatus('loading', 'Đang đọc nội dung file CV...');
+
+        const formData = new FormData();
+        formData.append('cv_file', input.files[0]);
+
+        try {
+            const res = await fetch('/api/v1/cv/parse', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+                body: formData
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                setParseStatus('error', '❌ ' + (err.message || 'Không đọc được file.'));
+                return;
+            }
+
+            const data = await res.json();
+            document.getElementById('tom_tat').value = data.tom_tat || '';
+            document.getElementById('hoc_van').value = data.hoc_van || '';
+            document.getElementById('kinh_nghiem').value = data.kinh_nghiem || '';
+            setParseStatus('success', '✅ Đọc file thành công! Hãy kiểm tra và chỉnh sửa nội dung bên dưới nếu cần.');
+        } catch (err) {
+            setParseStatus('error', '❌ Lỗi kết nối khi phân tích file.');
+        }
     }
 
     async function loadCVs() {
@@ -137,24 +247,58 @@
         e.preventDefault();
 
         const cvId = document.getElementById('cv-id').value;
-
-        // Chỉ gửi các trường nội dung thực tế, tự gán giá trị mặc định cho duong_dan/source ngầm bên dưới
-        const payload = {
-            tom_tat: document.getElementById('tom_tat').value,
-            hoc_van: document.getElementById('hoc_van').value,
-            kinh_nghiem_lam_viec: document.getElementById('kinh_nghiem').value,
-            duong_dan: "Tự tạo trên hệ thống",
-            source: "JobPortal"
-        };
-
         const method = cvId ? 'PUT' : 'POST';
         const url = cvId ? `/api/v1/cv/${cvId}` : '/api/v1/cv/';
+
+        let bodyData;
+        let fetchHeaders = {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        };
+
+        if (!cvId) {
+            const methodChoice = document.querySelector('input[name="cv_method"]:checked').value;
+
+            if (methodChoice === 'upload') {
+                // TẠO MỚI (POST): Gửi dưới dạng multipart/form-data
+                const fileInput = document.getElementById('cv_file');
+                if (fileInput.files.length === 0) {
+                    showToast("Vui lòng chọn file CV", "danger");
+                    return;
+                }
+
+                bodyData = new FormData();
+                bodyData.append('cv_file', fileInput.files[0]);
+                bodyData.append('tom_tat', document.getElementById('tom_tat').value);
+                bodyData.append('hoc_van', document.getElementById('hoc_van').value);
+                bodyData.append('kinh_nghiem', document.getElementById('kinh_nghiem').value);
+            } else {
+                // TẠO MỚI (POST): Nhập trực tiếp
+                bodyData = JSON.stringify({
+                    tom_tat: document.getElementById('tom_tat').value || 'Không có tóm tắt',
+                    hoc_van: document.getElementById('hoc_van').value || 'Không có học vấn',
+                    kinh_nghiem_lam_viec: document.getElementById('kinh_nghiem').value || 'Không có kinh nghiệm',
+                    duong_dan: "Tự tạo trên hệ thống",
+                    source: "JobPortal"
+                });
+                fetchHeaders['Content-Type'] = 'application/json';
+            }
+        } else {
+            // CẬP NHẬT (PUT): Gửi dưới dạng JSON
+            bodyData = JSON.stringify({
+                tom_tat: document.getElementById('tom_tat').value,
+                hoc_van: document.getElementById('hoc_van').value,
+                kinh_nghiem_lam_viec: document.getElementById('kinh_nghiem').value,
+                duong_dan: "Đã cập nhật",
+                source: "JobPortal"
+            });
+            fetchHeaders['Content-Type'] = 'application/json';
+        }
 
         try {
             const res = await fetch(url, {
                 method: method,
-                headers: getAuthHeaders(),
-                body: JSON.stringify(payload)
+                headers: fetchHeaders,
+                body: bodyData
             });
 
             if (res.ok) {
@@ -170,16 +314,20 @@
         }
     });
 
-    function editCV(cvId) {
-        const cv = cvListCache.find(c => c.ma_cv === cvId);
-
+    window.editCV = function(id) {
+        const cv = cvListCache.find(c => c.ma_cv === id);
         if (cv) {
-            showForm();
-            document.getElementById('form-title').innerText = 'Chỉnh sửa CV #' + cv.ma_cv;
-            document.getElementById('cv-id').value = cv.ma_cv;
-            document.getElementById('tom_tat').value = cv.tom_tat || '';
-            document.getElementById('hoc_van').value = cv.hoc_van || '';
-            document.getElementById('kinh_nghiem').value = cv.kinh_nghiem_lam_viec || '';
+            document.getElementById('cv-form-container').style.display = "block";
+            document.getElementById('form-title').innerText = "Chỉnh sửa CV #" + id;
+            document.getElementById('cv-id').value = id;
+            document.getElementById('tom_tat').value = cv.tom_tat;
+            document.getElementById('hoc_van').value = cv.hoc_van;
+            document.getElementById('kinh_nghiem').value = cv.kinh_nghiem_lam_viec;
+            
+            // Ẩn upload file và method selector khi edit
+            document.getElementById('creation-method-group').style.display = "none";
+            document.getElementById('file-group').style.display = "none";
+            document.getElementById('cv_file').required = false;
         }
     }
 

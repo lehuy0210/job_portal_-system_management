@@ -85,6 +85,7 @@ CREATE TABLE `cv` (
   `source` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `hoc_van` text COLLATE utf8mb4_unicode_ci,
   `kinh_nghiem_lam_viec` text COLLATE utf8mb4_unicode_ci,
+  `so_nam_kinh_nghiem` int DEFAULT 0,
   `ngay_tao` datetime DEFAULT NULL,
   `ngay_sua` datetime DEFAULT NULL,
   `ma_ung_vien` int NOT NULL,
@@ -305,7 +306,8 @@ CREATE TABLE `tin_tuyen_dung` (
   `tieu_de` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `mo_ta` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `han_nop` date NOT NULL,
-  `luong` int DEFAULT NULL,
+  `min_salary` int DEFAULT NULL,
+  `max_salary` int DEFAULT NULL,
   `dia_chi` text COLLATE utf8mb4_unicode_ci,
   `so_nam_kinh_nghiem` int DEFAULT NULL,
   `ma_nha_tuyen_dung` int NOT NULL,
@@ -469,3 +471,6 @@ INSERT INTO `trang_thai` (`ten_trang_thai`, `ma_doi_tuong`) VALUES
 ('Tạm dừng', 2),
 ('Đã đóng', 2);
 -- Dump completed on 2026-08-22 17:38:41
+
+insert into nguoi_dung(username,password,ma_vai_tro)
+values('admin','$2b$12$eY52t6sZyPaM3rMpTw5./.AzxjvE5TYiG/2BMVExL2xYyS8iDRtrC',3)

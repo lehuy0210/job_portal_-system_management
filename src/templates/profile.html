@@ -67,7 +67,7 @@
     const token = localStorage.getItem('access_token');
 
     if (!token || role !== "1") {
-        alert("Chỉ ứng viên đã đăng nhập mới có quyền truy cập trang này!");
+        showToast("Chỉ ứng viên đã đăng nhập mới có quyền truy cập trang này.", "danger");
         window.location.href = "/";
     }
 

@@ -11,52 +11,75 @@
         <h1>Tìm kiếm công việc mơ ước của bạn</h1>
         <p>Hàng ngàn cơ hội việc làm từ các công ty hàng đầu đang chờ đón bạn.</p>
 
-        <form class="filter-container" id="filterForm">
-            <div class="filter-group col-span-2">
-                <label>Từ khóa (Tiêu đề / Mô tả)</label>
-                <input type="text" id="keyword" placeholder="VD: Backend, .NET, React...">
-            </div>
-            <div class="filter-group">
-                <label>Địa điểm làm việc</label>
-                <input type="text" id="dia_chi" placeholder="VD: Hồ Chí Minh, Quận 1...">
+        <form id="filterForm">
+            <div class="search-wrapper">
+                <div class="search-input-group">
+                    <span>🔍</span>
+                    <input type="text" id="keyword" placeholder="Tiêu đề, kỹ năng, công ty...">
+                </div>
+                <div class="search-input-group">
+                    <span>📍</span>
+                    <input type="text" id="dia_chi" placeholder="Địa điểm (VD: Hồ Chí Minh)">
+                </div>
+                <button type="submit" class="btn btn-primary btn-search">Tìm việc</button>
             </div>
 
-            <div class="filter-group">
-                <label>Lương tối thiểu (VNĐ)</label>
-                <input type="number" id="min_salary" placeholder="VD: 10000000" min="0">
-            </div>
-            <div class="filter-group">
-                <label>Lương tối đa (VNĐ)</label>
-                <input type="number" id="max_salary" placeholder="VD: 30000000" min="0">
-            </div>
-            <div class="filter-group">
-                <label>Kỹ năng yêu cầu</label>
-                <select id="skill_id">
-                    <option value="">-- Tất cả kỹ năng --</option>
+            <div class="quick-filters">
+                <select id="salary_range">
+                    <option value="">💰 Tất cả mức lương</option>
+                    <option value="0-10000000">Dưới 10 triệu</option>
+                    <option value="10000000-20000000">10 - 20 triệu</option>
+                    <option value="20000000-30000000">20 - 30 triệu</option>
+                    <option value="30000000-999999999">Trên 30 triệu</option>
                 </select>
+
+                <select id="experience_range">
+                    <option value="">🎓 Tất cả kinh nghiệm</option>
+                    <option value="0-0">Chưa có kinh nghiệm</option>
+                    <option value="1-3">1 - 3 năm</option>
+                    <option value="3-5">3 - 5 năm</option>
+                    <option value="5-99">Trên 5 năm</option>
+                </select>
+
+                <select id="skill_id">
+                    <option value="">⚡ Tất cả kỹ năng</option>
+                </select>
+
+                <button type="button" class="btn btn-outline" id="resetBtn" style="border-radius: 30px; padding: 10px 16px;">↻ Đặt lại</button>
             </div>
 
-            <div class="filter-group">
-                <label>Kinh nghiệm tối thiểu (Năm)</label>
-                <input type="number" id="min_experience" placeholder="VD: 1" min="0">
-            </div>
-            <div class="filter-group">
-                <label>Kinh nghiệm tối đa (Năm)</label>
-                <input type="number" id="max_experience" placeholder="VD: 5" min="0">
-            </div>
-
-            <div class="filter-actions col-span-3">
-                <button type="button" class="btn btn-outline" id="resetBtn" style="padding: 10px 20px;">Đặt lại</button>
-                <button type="submit" class="btn btn-primary" style="padding: 10px 25px;">Tìm kiếm & Lọc</button>
+            <div class="hero-actions">
+                <a class="btn btn-outline hero-recommend-link" href="/screening">✦ Gợi ý việc làm theo CV</a>
+                <span>Đã có CV? Xem những cơ hội phù hợp nhất với bạn.</span>
             </div>
         </form>
     </div>
 </div>
 
 <div class="job-list-section">
-    <h2 class="section-title">Danh sách việc làm</h2>
+    <h2 class="section-title">Việc làm mới nhất</h2>
     <div class="job-grid" id="public-job-list">
-        <p style="color: #64748b; text-align: center; width: 100%;">Đang tải danh sách việc làm...</p>
+        <div class="loading-state" role="status" aria-live="polite">
+            <span class="skeleton-line skeleton-title"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line short"></span>
+        </div>
+        <div class="loading-state" aria-hidden="true">
+            <span class="skeleton-line skeleton-title"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line short"></span>
+        </div>
+    </div>
+</div>
+
+<div class="apply-dialog" id="apply-dialog" hidden>
+    <div class="apply-dialog-card" role="dialog" aria-modal="true" aria-labelledby="apply-dialog-title">
+        <button class="apply-dialog-close" type="button" id="close-apply-dialog" aria-label="Đóng">×</button>
+        <p class="eyebrow">Nộp hồ sơ</p>
+        <h2 id="apply-dialog-title">Chọn CV để ứng tuyển</h2>
+        <label for="apply-cv-select">CV sử dụng</label>
+        <select id="apply-cv-select"></select>
+        <button class="btn btn-primary" type="button" id="confirm-apply">Gửi hồ sơ</button>
     </div>
 </div>
 
@@ -76,6 +99,9 @@
         loadSkillsDropdown();
         loadPublicJobs();
     });
+
+    let selectedJobId = null;
+    let candidateCvs = [];
 
     async function loadSkillsDropdown() {
         try {
@@ -99,23 +125,34 @@
     async function loadPublicJobs() {
         const keyword = document.getElementById('keyword').value.trim();
         const diaChi = document.getElementById('dia_chi').value.trim();
-        const minSalary = document.getElementById('min_salary').value;
-        const maxSalary = document.getElementById('max_salary').value;
-        const minExp = document.getElementById('min_experience').value;
-        const maxExp = document.getElementById('max_experience').value;
         const skillId = document.getElementById('skill_id').value;
+
+        const salaryRange = document.getElementById('salary_range').value;
+        let minSalary = "", maxSalary = "";
+        if (salaryRange) {
+            const parts = salaryRange.split('-');
+            minSalary = parts[0];
+            maxSalary = parts[1];
+        }
+
+        const expRange = document.getElementById('experience_range').value;
+        let minExp = "", maxExp = "";
+        if (expRange) {
+            const parts = expRange.split('-');
+            minExp = parts[0];
+            maxExp = parts[1];
+        }
 
         const params = new URLSearchParams();
         if (keyword) params.append('keyword', keyword);
         if (diaChi) params.append('dia_chi', diaChi);
-        if (minSalary) params.append('min_salary', minSalary);
+        if (minSalary && minSalary !== '0') params.append('min_salary', minSalary);
         if (maxSalary) params.append('max_salary', maxSalary);
         if (minExp) params.append('min_experience', minExp);
         if (maxExp) params.append('max_experience', maxExp);
         if (skillId) params.append('skill_ids', skillId);
 
-        // Mặc định luôn lọc tin đang mở (ma_trang_thai = 2) cho ứng viên xem
-        params.append('ma_trang_thai', '2');
+        params.append('ma_trang_thai', '8');  // 8 = Đang mở
 
         try {
             const res = await fetch(`/api/v1/jobs/search?${params.toString()}`, {
@@ -127,10 +164,15 @@
                 const result = await res.json();
                 renderJobs(result.data || []);
             } else {
-                document.getElementById('public-job-list').innerHTML = `<p style="color: red; width: 100%; text-align: center;">Không thể tải dữ liệu việc làm.</p>`;
+                containerError('Không thể tải dữ liệu việc làm.');
             }
         } catch (error) {
-            document.getElementById('public-job-list').innerHTML = `<p style="color: red; width: 100%; text-align: center;">Lỗi kết nối máy chủ.</p>`;
+            containerError('Lỗi kết nối máy chủ.');
+        }
+
+        function containerError(message) {
+            document.getElementById('public-job-list').innerHTML =
+                `<div class="empty-state error-state" role="alert"><strong>${message}</strong><span>Vui lòng thử lại sau ít phút.</span></div>`;
         }
     }
 
@@ -139,15 +181,24 @@
         container.innerHTML = '';
 
         if (jobs.length === 0) {
-            container.innerHTML = `<p style="color: #64748b; text-align: center; width: 100%; grid-column: 1 / -1;">Không tìm thấy công việc nào phù hợp với điều kiện lọc.</p>`;
+            container.innerHTML = `<div class="empty-state"><strong>Chưa có công việc phù hợp</strong><span>Thử đổi từ khóa hoặc nới rộng bộ lọc để xem thêm kết quả.</span></div>`;
             return;
         }
 
         jobs.forEach(job => {
             const tieuDe = job.tieu_de || "Chưa cập nhật tiêu đề";
             const congTy = job.ten_cong_ty || job.ten_nha_tuyen_dung || "Đang cập nhật công ty";
-            const luong = job.luong ? job.luong.toLocaleString('vi-VN') + " đ" : "Thỏa thuận";
             const diaChi = job.dia_chi || "Chưa cập nhật địa chỉ";
+
+            let luongText = "Thỏa thuận";
+            if (job.min_salary && job.max_salary) {
+                luongText = `${(job.min_salary / 1000000).toFixed(1)} - ${(job.max_salary / 1000000).toFixed(1)} triệu`;
+            } else if (job.min_salary) {
+                luongText = `Từ ${(job.min_salary / 1000000).toFixed(1)} triệu`;
+            } else if (job.max_salary) {
+                luongText = `Đến ${(job.max_salary / 1000000).toFixed(1)} triệu`;
+            }
+            luongText = luongText.replace('.0', '');
 
             let hanNop = "Không thời hạn";
             if (job.han_nop) {
@@ -163,21 +214,28 @@
             }
 
             container.innerHTML += `
-                <div class="job-card">
-                    <a href="#" class="job-title">${tieuDe}</a>
+                <article class="job-card">
+                    <h3 class="job-title"><a href="/jobs/${job.tin_id}">${tieuDe}</a></h3>
                     <div class="job-company">🏢 ${congTy}</div>
                     <div class="job-details">
-                        <span class="salary-badge">💰 Mức lương: ${luong}</span>
-                        <span>📍 Địa điểm: ${diaChi}</span>
+                        <span class="salary-badge">💰 ${luongText}</span>
+                        <span style="margin-top: 8px;">📍 ${diaChi}</span>
                         <span>⏱ Hạn nộp: ${hanNop}</span>
                     </div>
                     <div class="job-skills">
                         ${skillsHtml}
                     </div>
-                </div>
+                    ${localStorage.getItem('ma_vai_tro') === '1' ? `<button class="btn btn-primary apply-job-btn" type="button" onclick="openApplyDialog(${job.tin_id}, '${tieuDe.replace(/'/g, "\\'")}')">Ứng tuyển</button>` : ''}
+                </article>
             `;
         });
     }
+
+    document.getElementById('filterForm').addEventListener('change', function(e) {
+        if(e.target.tagName === 'SELECT') {
+            loadPublicJobs();
+        }
+    });
 
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -188,6 +246,56 @@
         document.getElementById('filterForm').reset();
         document.getElementById('skill_id').value = "";
         loadPublicJobs();
+    });
+
+    async function openApplyDialog(jobId, title) {
+        selectedJobId = jobId;
+        document.getElementById('apply-dialog-title').textContent = `Ứng tuyển: ${title}`;
+        const select = document.getElementById('apply-cv-select');
+        select.innerHTML = '<option>Đang tải CV...</option>';
+        document.getElementById('apply-dialog').hidden = false;
+        try {
+            const response = await fetch('/api/v1/cv/ung-vien', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Không thể tải CV.');
+            candidateCvs = result.data || [];
+            select.innerHTML = candidateCvs.length
+                ? candidateCvs.map(cv => `<option value="${cv.ma_cv}">CV #${cv.ma_cv} · ${(cv.tom_tat || 'Chưa có tóm tắt').slice(0, 60)}</option>`).join('')
+                : '<option value="">Bạn chưa có CV</option>';
+        } catch (error) {
+            select.innerHTML = '<option value="">Không thể tải CV</option>';
+            showToast(error.message, 'danger');
+        }
+    }
+
+    document.getElementById('close-apply-dialog').addEventListener('click', () => {
+        document.getElementById('apply-dialog').hidden = true;
+    });
+
+    document.getElementById('confirm-apply').addEventListener('click', async () => {
+        const cvId = document.getElementById('apply-cv-select').value;
+        if (!selectedJobId || !cvId) {
+            showToast('Hãy tạo và chọn một CV trước khi ứng tuyển.', 'danger');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/v1/jobs/${selectedJobId}/apply`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify({ ma_cv: Number(cvId) })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Nộp hồ sơ thất bại.');
+            document.getElementById('apply-dialog').hidden = true;
+            showToast(result.message || 'Nộp hồ sơ thành công.', 'success');
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
     });
 </script>
 {% endblock %}

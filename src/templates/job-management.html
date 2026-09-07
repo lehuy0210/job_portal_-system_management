@@ -16,6 +16,53 @@
         cursor: pointer;
         transition: all 0.2s;
     }
+
+    async function loadApplications(tinId, title) {
+        const panel = document.getElementById('applications-panel');
+        const body = document.getElementById('applications-body');
+        document.getElementById('applications-title').textContent = `Hồ sơ ứng tuyển · ${title}`;
+        panel.hidden = false;
+        body.innerHTML = '<tr><td colspan="5">Đang tải hồ sơ...</td></tr>';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        try {
+            const response = await fetch(`/api/v1/jobs/${tinId}/applications`, { headers: getAuthHeaders() });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Không thể tải hồ sơ.');
+            const applications = result.data || [];
+            body.innerHTML = applications.length ? applications.map(application => `
+                <tr>
+                    <td><strong>${application.ho_ten || 'Chưa cập nhật'}</strong><small>${application.email || ''}</small></td>
+                    <td>${application.ngay_nop || '-'}</td>
+                    <td>CV #${application.ma_cv}</td>
+                    <td><span class="application-status">${application.ten_trang_thai || 'Mới nộp'}</span></td>
+                    <td>
+                        <select class="status-select" onchange="updateApplicationStatus(${application.ma_ho_so}, this)">
+                            <option value="1" ${application.ma_trang_thai === 1 ? 'selected' : ''}>Mới nộp</option>
+                            <option value="4" ${application.ma_trang_thai === 4 ? 'selected' : ''}>Phỏng vấn</option>
+                            <option value="5" ${application.ma_trang_thai === 5 ? 'selected' : ''}>Trúng tuyển</option>
+                            <option value="6" ${application.ma_trang_thai === 6 ? 'selected' : ''}>Từ chối</option>
+                        </select>
+                    </td>
+                </tr>`).join('') : '<tr><td colspan="5">Chưa có hồ sơ ứng tuyển.</td></tr>';
+        } catch (error) {
+            body.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
+        }
+    }
+
+    async function updateApplicationStatus(applicationId, select) {
+        try {
+            const response = await fetch(`/api/v1/jobs/applications/${applicationId}/status`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ma_trang_thai: Number(select.value) })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Cập nhật thất bại.');
+            showToast(result.message || 'Cập nhật trạng thái thành công.', 'success');
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
+    }
     .status-select:focus {
         border-color: #2563eb;
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
@@ -30,7 +77,10 @@
 <div class="job-container">
     <div class="job-header">
         <h2>Quản lý tin tuyển dụng</h2>
-        <button class="btn btn-primary" onclick="showForm()">+ Đăng tin mới</button>
+        <div class="job-header-actions">
+            <a class="btn btn-outline" href="/screening">Sàng lọc CV</a>
+            <button class="btn btn-primary" onclick="showForm()">+ Đăng tin mới</button>
+        </div>
     </div>
 
     <div id="job-form-container" class="job-form-container" style="display: none;">
@@ -46,10 +96,16 @@
                     <label>Hạn nộp hồ sơ <span style="color:red">*</span></label>
                     <input type="text" id="han_nop" class="form-control" placeholder="dd/mm/yyyy" required>
                 </div>
-                <div class="form-group">
-                    <label>Mức lương (VNĐ)</label>
-                    <input type="number" id="luong" class="form-control" placeholder="VD: 15000000" min="0">
-                </div>
+                <div class="job-form-row">
+    <div class="form-group">
+        <label>Lương tối thiểu (VNĐ)</label>
+        <input type="number" id="min_salary" class="form-control" placeholder="VD: 10000000" min="0">
+    </div>
+    <div class="form-group">
+        <label>Lương tối đa (VNĐ)</label>
+        <input type="number" id="max_salary" class="form-control" placeholder="VD: 20000000" min="0">
+    </div>
+</div>
             </div>
 
             <div class="job-form-row">
@@ -80,6 +136,25 @@
         </form>
     </div>
 
+    <section id="applications-panel" class="applications-panel" hidden>
+        <div class="applications-heading">
+            <h3 id="applications-title">Hồ sơ ứng tuyển</h3>
+            <button class="btn btn-outline" type="button" onclick="document.getElementById('applications-panel').hidden = true">Đóng</button>
+        </div>
+        <table class="job-table applications-table">
+            <thead>
+                <tr>
+                    <th>Ứng viên</th>
+                    <th>Ngày nộp</th>
+                    <th>CV</th>
+                    <th>Trạng thái</th>
+                    <th>Cập nhật</th>
+                </tr>
+            </thead>
+            <tbody id="applications-body"></tbody>
+        </table>
+    </section>
+
     <table class="job-table">
         <thead>
             <tr>
@@ -88,6 +163,7 @@
                 <th>Hạn nộp</th>
                 <th>Mức lương</th>
                 <th>Trạng thái</th>
+                <th>Ứng viên</th>
             </tr>
         </thead>
         <tbody id="job-list">
@@ -135,6 +211,66 @@
         document.getElementById('job-form-container').style.display = 'none';
     }
 
+    function formatDateTime(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        if (isNaN(date)) return dateString;
+        return date.toLocaleString('vi-VN', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    async function loadApplications(tinId, title) {
+        const panel = document.getElementById('applications-panel');
+        const body = document.getElementById('applications-body');
+        document.getElementById('applications-title').textContent = `Hồ sơ ứng tuyển · ${title}`;
+        panel.hidden = false;
+        body.innerHTML = '<tr><td colspan="5">Đang tải hồ sơ...</td></tr>';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        try {
+            const response = await fetch(`/api/v1/jobs/${tinId}/applications`, { headers: getAuthHeaders() });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Không thể tải hồ sơ.');
+            const applications = result.data || [];
+            window.currentApplications = applications;
+            body.innerHTML = applications.length ? applications.map((application, idx) => {
+                return `
+                <tr>
+                    <td><strong>${application.ho_ten || 'Chưa cập nhật'}</strong><br><small>${application.email || ''}</small></td>
+                    <td>${formatDateTime(application.ngay_nop)}</td>
+                    <td><a href="/cv/preview?id=${application.ma_cv}" onclick="localStorage.setItem('preview_cv_${application.ma_cv}', JSON.stringify(window.currentApplications[${idx}]))" target="_blank" style="color: #2563eb; text-decoration: underline;">Xem CV #${application.ma_cv}</a></td>
+                    <td><span class="application-status">${application.ten_trang_thai || 'Mới nộp'}</span></td>
+                    <td>
+                        <select class="status-select" onchange="updateApplicationStatus(${application.ma_ho_so}, this)">
+                            <option value="1" ${application.ma_trang_thai === 1 ? 'selected' : ''}>Mới nộp</option>
+                            <option value="4" ${application.ma_trang_thai === 4 ? 'selected' : ''}>Phỏng vấn</option>
+                            <option value="5" ${application.ma_trang_thai === 5 ? 'selected' : ''}>Trúng tuyển</option>
+                            <option value="6" ${application.ma_trang_thai === 6 ? 'selected' : ''}>Từ chối</option>
+                        </select>
+                    </td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="5">Chưa có hồ sơ ứng tuyển.</td></tr>';
+        } catch (error) {
+            body.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
+        }
+    }
+
+    async function updateApplicationStatus(applicationId, select) {
+        try {
+            const response = await fetch(`/api/v1/jobs/applications/${applicationId}/status`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ma_trang_thai: Number(select.value) })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Cập nhật thất bại.');
+            showToast(result.message || 'Cập nhật trạng thái thành công.', 'success');
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
+    }
+
     async function loadJobs() {
         try {
             const res = await fetch(`/api/v1/jobs/search`, {
@@ -157,7 +293,20 @@
             if (jobs.length > 0) {
                 jobs.forEach(job => {
                     const tieuDe = job.tieu_de || "Không có tiêu đề";
-                    const luong = job.luong ? job.luong.toLocaleString('vi-VN') + " đ" : "Thỏa thuận";
+
+                    let luongText = "Thỏa thuận";
+                    if (job.min_salary && job.max_salary) {
+                        if (job.min_salary === job.max_salary) {
+                            luongText = job.min_salary.toLocaleString('vi-VN') + " đ";
+                        } else {
+                            luongText = `${(job.min_salary / 1000000).toFixed(1)} - ${(job.max_salary / 1000000).toFixed(1)} triệu`;
+                        }
+                    } else if (job.min_salary) {
+                        luongText = `Từ ${(job.min_salary / 1000000).toFixed(1)} triệu`;
+                    } else if (job.max_salary) {
+                        luongText = `Đến ${(job.max_salary / 1000000).toFixed(1)} triệu`;
+                    }
+                    luongText = luongText.replace('.0', '');
 
                     let hanNop = "Không thời hạn";
                     if (job.han_nop) {
@@ -175,7 +324,7 @@
                             <td><strong>#${job.tin_id}</strong></td>
                             <td>${tieuDe}</td>
                             <td>${hanNop}</td>
-                            <td>${luong}</td>
+                            <td>${luongText}</td>
                             <td>
                                 <select class="status-select status-${currentStatus}" onchange="updateJobStatus(${job.tin_id}, this)">
                                     <option value="2" ${currentStatus === 2 ? 'selected' : ''}>Đã mở</option>
@@ -183,11 +332,12 @@
                                     <option value="10" ${currentStatus === 10 ? 'selected' : ''}>Đã đóng</option>
                                 </select>
                             </td>
+                            <td><button class="btn btn-outline application-btn" type="button" onclick="loadApplications(${job.tin_id}, '${tieuDe.replace(/'/g, "\\'")}')">Xem hồ sơ</button></td>
                         </tr>
                     `;
                 });
             } else {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;">Bạn chưa có tin tuyển dụng nào.</td></tr>`;
+                tbody.innerHTML = `                <tr><td colspan="6" style="text-align: center; padding: 30px; color: #6c757d;">Bạn chưa có tin tuyển dụng nào.</td></tr>`;
             }
         } catch (error) {
             showToast("Lỗi khi tải danh sách tin tuyển dụng.", "danger");
@@ -218,47 +368,52 @@
         }
     }
 
-    document.getElementById('jobForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
+document.getElementById('jobForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-        const kyNangStr = document.getElementById('ky_nangs').value;
-        const tenKyNangArray = kyNangStr
-            ? kyNangStr.split(',').map(item => item.trim()).filter(item => item !== "")
-            : [];
+    const kyNangStr = document.getElementById('ky_nangs').value;
+    const tenKyNangArray = kyNangStr
+        ? kyNangStr.split(',').map(item => item.trim()).filter(item => item !== "")
+        : [];
 
-        const hanNopValue = document.getElementById('han_nop').value;
+    const hanNopValue = document.getElementById('han_nop').value;
 
-        const payload = {
-            tieu_de: document.getElementById('tieu_de').value,
-            mo_ta: document.getElementById('mo_ta').value,
-            han_nop: hanNopValue,
-            luong: document.getElementById('luong').value ? parseInt(document.getElementById('luong').value) : null,
-            dia_chi: document.getElementById('dia_chi').value || null,
-            so_nam_kinh_nghiem: document.getElementById('so_nam_kinh_nghiem').value ? parseInt(document.getElementById('so_nam_kinh_nghiem').value) : null,
-            ma_nha_tuyen_dung: parseInt(userId) || 1,
-            ma_trang_thai: 2, // Mặc định tin mới đăng là Đã mở
-            ten_ky_nangs: tenKyNangArray
-        };
+    // Đọc giá trị từ 2 ô min_salary và max_salary mới
+    const minSalaryInput = document.getElementById('min_salary').value;
+    const maxSalaryInput = document.getElementById('max_salary').value;
 
-        try {
-            const res = await fetch(`/api/v1/jobs/`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(payload)
-            });
+    const payload = {
+        tieu_de: document.getElementById('tieu_de').value,
+        mo_ta: document.getElementById('mo_ta').value,
+        han_nop: hanNopValue,
+        min_salary: minSalaryInput ? parseInt(minSalaryInput) : null,
+        max_salary: maxSalaryInput ? parseInt(maxSalaryInput) : null,
+        dia_chi: document.getElementById('dia_chi').value || null,
+        so_nam_kinh_nghiem: document.getElementById('so_nam_kinh_nghiem').value ? parseInt(document.getElementById('so_nam_kinh_nghiem').value) : null,
+        ma_nha_tuyen_dung: parseInt(userId) || 1,
+        ma_trang_thai: 2, // Mặc định tin mới đăng là Đã mở
+        ten_ky_nangs: tenKyNangArray
+    };
 
-            if (res.ok) {
-                showToast("Đăng tin tuyển dụng thành công!", "success");
-                hideForm();
-                loadJobs();
-            } else {
-                const errorData = await res.json();
-                const errorMsg = errorData.message || "Lỗi khi đăng tin. Vui lòng kiểm tra lại!";
-                showToast(errorMsg, "danger");
-            }
-        } catch (error) {
-            showToast("Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.", "danger");
+    try {
+        const res = await fetch(`/api/v1/jobs/`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast("Đăng tin tuyển dụng thành công!", "success");
+            hideForm();
+            loadJobs();
+        } else {
+            const errorData = await res.json();
+            const errorMsg = errorData.message || "Lỗi khi đăng tin. Vui lòng kiểm tra lại!";
+            showToast(errorMsg, "danger");
         }
-    });
+    } catch (error) {
+        showToast("Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.", "danger");
+    }
+});
 </script>
 {% endblock %}
